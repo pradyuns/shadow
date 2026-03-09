@@ -1,0 +1,62 @@
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    # App
+    app_name: str = "Competitor Intelligence Monitor"
+    app_version: str = "0.1.0"
+    log_level: str = "info"
+
+    # PostgreSQL
+    database_url: str = "postgresql+asyncpg://compmon:changeme@postgres:5432/compmon"
+    database_url_sync: str = "postgresql://compmon:changeme@postgres:5432/compmon"
+
+    # MongoDB
+    mongodb_url: str = "mongodb://compmon:changeme@mongodb:27017/compmon?authSource=admin"
+    mongodb_database: str = "compmon"
+
+    # Redis
+    redis_url: str = "redis://redis:6379/0"
+    redis_result_url: str = "redis://redis:6379/1"
+    redis_cache_url: str = "redis://redis:6379/2"
+
+    # JWT
+    jwt_secret_key: str = "change-this-to-a-random-secret-key"
+    jwt_access_token_expire_minutes: int = 30
+    jwt_refresh_token_expire_days: int = 7
+    jwt_algorithm: str = "HS256"
+
+    # Anthropic
+    anthropic_api_key: str = ""
+    claude_model: str = "claude-sonnet-4-5-20241022"
+    claude_max_tokens_budget: int = 4000
+    claude_rate_limit_per_minute: int = 20
+
+    # SendGrid
+    sendgrid_api_key: str = ""
+    sendgrid_from_email: str = "alerts@yourcompany.com"
+
+    # CORS
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    # Scraping
+    default_check_interval_hours: int = 6
+    max_monitors_per_user: int = 50
+    scrape_batch_size: int = 20
+    scrape_timeout_seconds: int = 60
+    scrape_hard_timeout_seconds: int = 90
+
+    # Cleanup
+    snapshot_ttl_days: int = 90
+    diff_ttl_days: int = 180
+    analysis_ttl_days: int = 365
+    deleted_monitor_retention_days: int = 30
+
+
+settings = Settings()

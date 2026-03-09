@@ -1,0 +1,89 @@
+from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
+
+import structlog
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+
+from app.config import settings
+from app.db.mongodb import close_mongo_client, get_mongo_db
+from app.db.postgres import engine
+from app.db.redis import close_redis, get_redis_cache
+
+logger = structlog.get_logger()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    logger.info("Starting up", app_name=settings.app_name, version=settings.app_version)
+    yield
+    logger.info("Shutting down")
+    await close_mongo_client()
+    await close_redis()
+
+
+app = FastAPI(
+    title=settings.app_name,
+    version=settings.app_version,
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/api/v1/health")
+async def health() -> dict:
+    return {
+        "status": "ok",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/api/v1/health/ready")
+async def health_ready() -> JSONResponse:
+    checks: dict[str, str] = {}
+
+    # Check PostgreSQL
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        checks["postgres"] = "ok"
+    except Exception as e:
+        checks["postgres"] = f"error: {e}"
+
+    # Check MongoDB
+    try:
+        db = get_mongo_db()
+        await db.command("ping")
+        checks["mongodb"] = "ok"
+    except Exception as e:
+        checks["mongodb"] = f"error: {e}"
+
+    # Check Redis
+    try:
+        redis_client = get_redis_cache()
+        await redis_client.ping()
+        checks["redis"] = "ok"
+    except Exception as e:
+        checks["redis"] = f"error: {e}"
+
+    all_ok = all(v == "ok" for v in checks.values())
+
+    return JSONResponse(
+        status_code=200 if all_ok else 503,
+        content={
+            "status": "ready" if all_ok else "degraded",
+            **checks,
+        },
+    )
