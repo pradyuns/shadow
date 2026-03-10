@@ -138,7 +138,7 @@ export default function Monitors() {
                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      Every {m.check_interval_minutes}m
+                      Every {m.check_interval_hours}h
                     </span>
                     <span>Checked {timeAgo(m.last_checked_at)}</span>
                     {m.last_change_at && (

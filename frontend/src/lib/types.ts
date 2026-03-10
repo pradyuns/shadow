@@ -1,16 +1,24 @@
+export type PageType = 'pricing' | 'changelog' | 'homepage' | 'jobs' | 'blog' | 'docs' | 'other'
+
 export interface Monitor {
   id: string
   user_id: string
   name: string
   url: string
-  check_interval_minutes: number
+  competitor_name: string | null
+  page_type: PageType
+  check_interval_hours: number
   css_selector: string | null
   render_js: boolean
   is_active: boolean
-  is_deleted: boolean
+  next_check_at: string
   last_checked_at: string | null
+  last_scrape_status: string
+  last_scrape_error: string | null
+  last_snapshot_id: string | null
   last_change_at: string | null
   consecutive_failures: number
+  noise_patterns: string[]
   created_at: string
   updated_at: string
 }

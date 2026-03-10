@@ -5,7 +5,7 @@ interface User {
   id: string
   email: string
   full_name: string
-  role: string
+  is_admin: boolean
 }
 
 interface AuthState {
@@ -40,21 +40,38 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   login: async (email, password) => {
-    const { data } = await api.post('/auth/login', { email, password })
-    localStorage.setItem('token', data.access_token)
-    localStorage.setItem('user', JSON.stringify(data.user))
-    set({ user: data.user, token: data.access_token })
+    // Step 1: Get tokens
+    const { data: tokens } = await api.post('/auth/login', { email, password })
+    const accessToken = tokens.access_token
+    localStorage.setItem('token', accessToken)
+
+    // Step 2: Fetch user profile using the new token
+    const { data: user } = await api.get('/users/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    localStorage.setItem('user', JSON.stringify(user))
+    set({ user, token: accessToken })
   },
 
   register: async (email, password, fullName) => {
-    const { data } = await api.post('/auth/register', {
+    // Step 1: Register (returns user but no token)
+    await api.post('/auth/register', {
       email,
       password,
       full_name: fullName,
     })
-    localStorage.setItem('token', data.access_token)
-    localStorage.setItem('user', JSON.stringify(data.user))
-    set({ user: data.user, token: data.access_token })
+
+    // Step 2: Login to get tokens
+    const { data: tokens } = await api.post('/auth/login', { email, password })
+    const accessToken = tokens.access_token
+    localStorage.setItem('token', accessToken)
+
+    // Step 3: Fetch user profile
+    const { data: user } = await api.get('/users/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    localStorage.setItem('user', JSON.stringify(user))
+    set({ user, token: accessToken })
   },
 
   logout: () => {

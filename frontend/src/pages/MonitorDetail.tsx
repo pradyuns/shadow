@@ -130,7 +130,7 @@ export default function MonitorDetail() {
             <div className="flex items-center gap-5 mt-3 text-xs text-gray-400">
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                Every {monitor.check_interval_minutes} minutes
+                Every {monitor.check_interval_hours} hours
               </span>
               <span>Last checked: {timeAgo(monitor.last_checked_at)}</span>
               {monitor.last_change_at && (

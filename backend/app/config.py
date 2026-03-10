@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     sendgrid_api_key: str = ""
     sendgrid_from_email: str = "alerts@yourcompany.com"
 
+    # Slack
+    slack_webhook_url: str = ""
+
     # CORS
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
 

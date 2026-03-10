@@ -1,7 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../lib/api'
+import type { PageType } from '../lib/types'
 import { ArrowLeft, Globe, Save } from 'lucide-react'
+
+const PAGE_TYPES: { value: PageType; label: string }[] = [
+  { value: 'pricing', label: 'Pricing' },
+  { value: 'changelog', label: 'Changelog' },
+  { value: 'homepage', label: 'Homepage' },
+  { value: 'jobs', label: 'Jobs' },
+  { value: 'blog', label: 'Blog' },
+  { value: 'docs', label: 'Docs' },
+  { value: 'other', label: 'Other' },
+]
+
+const INTERVALS = [
+  { value: 1, label: 'Every hour' },
+  { value: 3, label: 'Every 3 hours' },
+  { value: 6, label: 'Every 6 hours' },
+  { value: 12, label: 'Every 12 hours' },
+  { value: 24, label: 'Every 24 hours' },
+]
 
 export default function MonitorForm() {
   const { id } = useParams<{ id: string }>()
@@ -10,7 +29,8 @@ export default function MonitorForm() {
 
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
-  const [interval, setInterval] = useState(360)
+  const [pageType, setPageType] = useState<PageType>('homepage')
+  const [interval, setInterval] = useState(6)
   const [cssSelector, setCssSelector] = useState('')
   const [renderJs, setRenderJs] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -21,7 +41,8 @@ export default function MonitorForm() {
       api.get(`/monitors/${id}`).then(({ data }) => {
         setName(data.name)
         setUrl(data.url)
-        setInterval(data.check_interval_minutes)
+        setPageType(data.page_type || 'homepage')
+        setInterval(data.check_interval_hours)
         setCssSelector(data.css_selector || '')
         setRenderJs(data.render_js)
       }).catch(() => navigate('/monitors'))
@@ -36,7 +57,8 @@ export default function MonitorForm() {
     const payload = {
       name,
       url,
-      check_interval_minutes: interval,
+      page_type: pageType,
+      check_interval_hours: interval,
       css_selector: cssSelector || null,
       render_js: renderJs,
     }
@@ -50,19 +72,12 @@ export default function MonitorForm() {
         navigate(`/monitors/${data.id}`)
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save monitor')
+      const detail = err.response?.data?.detail
+      setError(typeof detail === 'string' ? detail : 'Failed to save monitor')
     } finally {
       setLoading(false)
     }
   }
-
-  const intervals = [
-    { value: 60, label: 'Every hour' },
-    { value: 180, label: 'Every 3 hours' },
-    { value: 360, label: 'Every 6 hours' },
-    { value: 720, label: 'Every 12 hours' },
-    { value: 1440, label: 'Every 24 hours' },
-  ]
 
   return (
     <div className="max-w-xl mx-auto">
@@ -119,9 +134,29 @@ export default function MonitorForm() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Page Type</label>
+            <div className="grid grid-cols-4 gap-2">
+              {PAGE_TYPES.map((pt) => (
+                <button
+                  key={pt.value}
+                  type="button"
+                  onClick={() => setPageType(pt.value)}
+                  className={`px-3 py-2 rounded-xl text-xs font-medium transition border ${
+                    pageType === pt.value
+                      ? 'bg-gray-900 text-white border-gray-900'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {pt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Check Interval</label>
             <div className="grid grid-cols-5 gap-2">
-              {intervals.map((opt) => (
+              {INTERVALS.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
