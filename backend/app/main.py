@@ -8,10 +8,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.api.v1.router import api_router
 from app.config import settings
 from app.db.mongodb import close_mongo_client, get_mongo_db
 from app.db.postgres import engine
 from app.db.redis import close_redis, get_redis_cache
+from app.middleware.error_handler import register_error_handlers
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.request_logging import RequestLoggingMiddleware
 
 logger = structlog.get_logger()
 
@@ -40,6 +44,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+
+register_error_handlers(app)
+app.include_router(api_router)
 
 
 @app.get("/api/v1/health")
