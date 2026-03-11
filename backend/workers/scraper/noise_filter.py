@@ -25,32 +25,26 @@ GLOBAL_NOISE_PATTERNS = [
     # Timestamps in various formats
     r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?",
     r"\d{10,13}",  # Unix epoch timestamps
-
     # Cache-busting hashes in asset URLs
     r"[a-f0-9]{8,32}(?=\.(js|css|png|jpg|svg|woff2?))",
     r"bundle\.[a-f0-9]+\.js",
     r"chunk-[a-f0-9]+",
-
     # Session/auth tokens
     r"csrf[_-]?token[\"':\s=]+[\"']?[\w-]+",
     r"session[_-]?id[\"':\s=]+[\"']?[\w-]+",
     r"nonce[\"':\s=]+[\"']?[\w-]+",
-
     # Tracking parameters
     r"utm_\w+=[^&\s]+",
     r"fbclid=[^&\s]+",
     r"gclid=[^&\s]+",
-
     # Ad slots and trackers
     r"ad[-_]?slot",
     r"google[_-]?ad",
     r"doubleclick",
     r"googletag",
-
     # Copyright years
     r"©\s*\d{4}",
     r"[Cc]opyright\s+\d{4}",
-
     # Cookie consent / banner IDs
     r"cookie[-_]?consent",
     r"cookie[-_]?banner",
@@ -109,7 +103,7 @@ def filter_diff(unified_diff: str, monitor_noise_patterns: list[str] | None = No
 
     # Compile per-monitor patterns (validated at monitor creation time, so safe here)
     compiled_custom = []
-    for pattern_str in (monitor_noise_patterns or []):
+    for pattern_str in monitor_noise_patterns or []:
         try:
             compiled_custom.append(re.compile(pattern_str, re.IGNORECASE))
         except re.error:

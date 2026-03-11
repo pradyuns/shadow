@@ -23,9 +23,9 @@ logger = structlog.get_logger()
 # Severity → color for email styling
 SEVERITY_COLORS = {
     "critical": "#DC2626",  # Red
-    "high": "#EA580C",      # Orange
-    "medium": "#CA8A04",    # Yellow
-    "low": "#2563EB",       # Blue
+    "high": "#EA580C",  # Orange
+    "medium": "#CA8A04",  # Yellow
+    "low": "#2563EB",  # Blue
 }
 
 

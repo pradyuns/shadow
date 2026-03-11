@@ -5,9 +5,10 @@ Revises:
 Create Date: 2026-03-09
 """
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "001"
 down_revision = None
@@ -36,7 +37,9 @@ def upgrade() -> None:
     op.create_table(
         "monitors",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("url", sa.Text(), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("competitor_name", sa.String(255), nullable=True),
@@ -72,8 +75,15 @@ def upgrade() -> None:
     op.create_table(
         "alerts",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("monitor_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("monitors.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "monitor_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("monitors.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("severity", sa.String(20), nullable=False),
         sa.Column("summary", sa.Text(), nullable=False),
         sa.Column("categories", postgresql.JSONB(), nullable=False, server_default=sa.text("'[]'::jsonb")),
@@ -96,7 +106,9 @@ def upgrade() -> None:
     op.create_table(
         "notification_settings",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("channel", sa.String(20), nullable=False),
         sa.Column("is_enabled", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("min_severity", sa.String(20), nullable=False, server_default=sa.text("'medium'")),
@@ -114,7 +126,9 @@ def upgrade() -> None:
     op.create_table(
         "api_keys",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("key_hash", sa.String(255), unique=True, nullable=False),
         sa.Column("key_prefix", sa.String(8), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),

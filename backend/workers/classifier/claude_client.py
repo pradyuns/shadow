@@ -50,7 +50,7 @@ CIRCUIT_BREAKER_COOLDOWN_SECONDS = 300  # 5 minutes
 
 # Cost estimation: Sonnet pricing (as of 2024)
 # Adjust these when model changes
-COST_PER_INPUT_TOKEN = 3.0 / 1_000_000   # $3 per 1M input tokens
+COST_PER_INPUT_TOKEN = 3.0 / 1_000_000  # $3 per 1M input tokens
 COST_PER_OUTPUT_TOKEN = 15.0 / 1_000_000  # $15 per 1M output tokens
 
 
@@ -78,6 +78,7 @@ def _record_failure(is_retryable: bool):
         if _consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD:
             _circuit_open_until = datetime.now(timezone.utc)
             from datetime import timedelta
+
             _circuit_open_until += timedelta(seconds=CIRCUIT_BREAKER_COOLDOWN_SECONDS)
             logger.error(
                 "claude_circuit_breaker_open",
@@ -160,9 +161,14 @@ def classify_change(
                         "items": {
                             "type": "string",
                             "enum": [
-                                "pricing_change", "feature_launch", "feature_removal",
-                                "hiring_signal", "messaging_change", "partnership",
-                                "technical_change", "other",
+                                "pricing_change",
+                                "feature_launch",
+                                "feature_removal",
+                                "hiring_signal",
+                                "messaging_change",
+                                "partnership",
+                                "technical_change",
+                                "other",
                             ],
                         },
                         "minItems": 1,

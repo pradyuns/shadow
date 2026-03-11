@@ -12,9 +12,7 @@ from app.utils.validators import validate_regex_pattern, validate_url_safe
 async def create_monitor(db: AsyncSession, user: User, data: dict) -> Monitor:
     # Check monitor limit
     count_result = await db.execute(
-        select(func.count(Monitor.id)).where(
-            Monitor.user_id == user.id, Monitor.deleted_at.is_(None)
-        )
+        select(func.count(Monitor.id)).where(Monitor.user_id == user.id, Monitor.deleted_at.is_(None))
     )
     current_count = count_result.scalar()
     if current_count >= user.max_monitors:
@@ -99,9 +97,7 @@ async def list_monitors(
         count_query = count_query.where(search_filter)
 
     total = (await db.execute(count_query)).scalar()
-    result = await db.execute(
-        query.order_by(Monitor.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
-    )
+    result = await db.execute(query.order_by(Monitor.created_at.desc()).offset((page - 1) * per_page).limit(per_page))
     return list(result.scalars().all()), total
 
 

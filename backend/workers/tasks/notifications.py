@@ -64,9 +64,7 @@ def send_notifications(self, alert_id: str) -> dict:
             return {"error": "monitor_not_found"}
 
         # Load user notification settings
-        settings_result = db.execute(
-            select(NotificationSetting).where(NotificationSetting.user_id == alert.user_id)
-        )
+        settings_result = db.execute(select(NotificationSetting).where(NotificationSetting.user_id == alert.user_id))
         user_settings = list(settings_result.scalars().all())
 
         if not user_settings:
@@ -141,7 +139,7 @@ def send_notifications(self, alert_id: str) -> dict:
                 errors.append(f"{setting.channel}: {e}")
                 logger.warning("notify_channel_failed", channel=setting.channel, error=str(e))
                 if e.is_retryable and self.request.retries < self.max_retries:
-                    raise self.retry(exc=e, countdown=10 * (2 ** self.request.retries))
+                    raise self.retry(exc=e, countdown=10 * (2**self.request.retries))
 
         # Update alert notification status
         alert.notified_via_slack = slack_sent
@@ -164,7 +162,7 @@ def send_notifications(self, alert_id: str) -> dict:
     except Exception as e:
         logger.error("notify_error", alert_id=alert_id, error=str(e), exc_info=True)
         if self.request.retries < self.max_retries:
-            raise self.retry(exc=e, countdown=10 * (2 ** self.request.retries))
+            raise self.retry(exc=e, countdown=10 * (2**self.request.retries))
         return {"error": str(e)}
 
     finally:
@@ -195,9 +193,13 @@ def send_daily_digest() -> dict:
 
     try:
         # Find digest entries for the current hour
-        pending_digests = list(mongo_db.digest_queue.find({
-            "digest_hour_utc": current_hour,
-        }))
+        pending_digests = list(
+            mongo_db.digest_queue.find(
+                {
+                    "digest_hour_utc": current_hour,
+                }
+            )
+        )
 
         if not pending_digests:
             return {"digests_sent": 0}
@@ -214,9 +216,7 @@ def send_daily_digest() -> dict:
             channel = digest_entry["channel"]
 
             # Load alerts
-            alerts = list(db.execute(
-                select(Alert).where(Alert.id.in_(alert_ids))
-            ).scalars().all())
+            alerts = list(db.execute(select(Alert).where(Alert.id.in_(alert_ids))).scalars().all())
 
             if not alerts:
                 mongo_db.digest_queue.delete_one({"_id": digest_entry["_id"]})
@@ -225,9 +225,7 @@ def send_daily_digest() -> dict:
             # Build digest summary
             lines = [f"📊 **Daily Digest** — {len(alerts)} alert(s)\n"]
             for alert in alerts:
-                monitor = db.execute(
-                    select(Monitor).where(Monitor.id == alert.monitor_id)
-                ).scalar_one_or_none()
+                monitor = db.execute(select(Monitor).where(Monitor.id == alert.monitor_id)).scalar_one_or_none()
                 monitor_name = monitor.name if monitor else "Unknown"
                 lines.append(f"• [{alert.severity.upper()}] {monitor_name}: {alert.summary[:100]}")
 
@@ -254,7 +252,9 @@ def send_daily_digest() -> dict:
                         summary=digest_text,
                         categories=["other"],
                     )
-                    notifier.send(payload, slack_webhook_url=setting.slack_webhook_url, email_address=setting.email_address)
+                    notifier.send(
+                        payload, slack_webhook_url=setting.slack_webhook_url, email_address=setting.email_address
+                    )
                     digests_sent += 1
                 except Exception as e:
                     logger.warning("digest_send_failed", user_id=user_id, channel=channel, error=str(e))

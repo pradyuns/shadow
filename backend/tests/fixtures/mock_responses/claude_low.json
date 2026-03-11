@@ -1,0 +1,22 @@
+{
+  "id": "msg_test_low",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_test_low",
+      "name": "classify_change",
+      "input": {
+        "significance_level": "low",
+        "summary": "Minor copy update on the homepage. A few words changed in the hero section, no strategic significance.",
+        "categories": ["messaging_change"]
+      }
+    }
+  ],
+  "model": "claude-sonnet-4-5-20241022",
+  "usage": {
+    "input_tokens": 300,
+    "output_tokens": 80
+  }
+}

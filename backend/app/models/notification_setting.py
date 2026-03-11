@@ -9,9 +9,7 @@ from app.models.base import Base, TimestampMixin, UUIDMixin
 
 class NotificationSetting(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "notification_settings"
-    __table_args__ = (
-        UniqueConstraint("user_id", "channel", name="uq_notification_settings_user_channel"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "channel", name="uq_notification_settings_user_channel"),)
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True

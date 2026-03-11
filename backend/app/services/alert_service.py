@@ -38,16 +38,12 @@ async def list_alerts(
         count_query = count_query.where(Alert.created_at <= until)
 
     total = (await db.execute(count_query)).scalar()
-    result = await db.execute(
-        query.order_by(Alert.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
-    )
+    result = await db.execute(query.order_by(Alert.created_at.desc()).offset((page - 1) * per_page).limit(per_page))
     return list(result.scalars().all()), total
 
 
 async def get_alert(db: AsyncSession, alert_id: uuid.UUID, user_id: uuid.UUID) -> Alert | None:
-    result = await db.execute(
-        select(Alert).where(Alert.id == alert_id, Alert.user_id == user_id)
-    )
+    result = await db.execute(select(Alert).where(Alert.id == alert_id, Alert.user_id == user_id))
     return result.scalar_one_or_none()
 
 

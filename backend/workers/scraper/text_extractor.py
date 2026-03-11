@@ -14,8 +14,8 @@ extractors, they register here and get dispatched by page_type.
 import hashlib
 import re
 
-from bs4 import BeautifulSoup
 import structlog
+from bs4 import BeautifulSoup
 
 logger = structlog.get_logger()
 

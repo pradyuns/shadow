@@ -113,9 +113,7 @@ class PlaywrightScraper(BaseScraper):
             context.route(
                 "**/*",
                 lambda route: (
-                    route.abort()
-                    if route.request.resource_type in BLOCKED_RESOURCE_TYPES
-                    else route.continue_()
+                    route.abort() if route.request.resource_type in BLOCKED_RESOURCE_TYPES else route.continue_()
                 ),
             )
 

@@ -1,0 +1,22 @@
+{
+  "id": "msg_test_critical",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_test_critical",
+      "name": "classify_change",
+      "input": {
+        "significance_level": "critical",
+        "summary": "Major pricing increase detected: Enterprise plan raised from $99/month to $129/month (30% increase). This is a significant strategic move that could affect competitive positioning.",
+        "categories": ["pricing_change"]
+      }
+    }
+  ],
+  "model": "claude-sonnet-4-5-20241022",
+  "usage": {
+    "input_tokens": 450,
+    "output_tokens": 120
+  }
+}

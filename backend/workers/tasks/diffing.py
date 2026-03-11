@@ -92,9 +92,7 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
         # Load monitor for noise patterns
         db = get_sync_db()
         try:
-            monitor = db.execute(
-                select(Monitor).where(Monitor.id == monitor_id)
-            ).scalar_one_or_none()
+            monitor = db.execute(select(Monitor).where(Monitor.id == monitor_id)).scalar_one_or_none()
             monitor_noise_patterns = monitor.noise_patterns if monitor else []
             monitor_name = monitor.name if monitor else "unknown"
         finally:
@@ -163,5 +161,5 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
     except Exception as e:
         logger.error("diff_error", monitor_id=monitor_id, snapshot_id=snapshot_id, error=str(e), exc_info=True)
         if self.request.retries < self.max_retries:
-            raise self.retry(exc=e, countdown=5 * (2 ** self.request.retries))
+            raise self.retry(exc=e, countdown=5 * (2**self.request.retries))
         return {"diff_id": None, "has_changes": False, "error": str(e)}

@@ -10,9 +10,16 @@ class Channel(str, Enum):
     email = "email"
 
 
+class Severity(str, Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+    critical = "critical"
+
+
 class NotificationSettingUpdate(BaseModel):
     is_enabled: bool = True
-    min_severity: str = "medium"
+    min_severity: Severity = Severity.medium
     slack_webhook_url: str | None = None
     email_address: str | None = None
     digest_mode: bool = False

@@ -1,10 +1,13 @@
 import time
 
-from fastapi import Request, HTTPException, status
+import structlog
+from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
 from app.db.redis import get_redis_cache
+
+logger = structlog.get_logger()
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -41,8 +44,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 )
         except HTTPException:
             raise
-        except Exception:
-            # If Redis is down, allow the request through
-            pass
+        except Exception as e:
+            # If Redis is down, allow the request but log a warning
+            logger.warning("rate_limit_redis_unavailable", error=str(e))
 
         return await call_next(request)

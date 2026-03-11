@@ -1,0 +1,22 @@
+{
+  "id": "msg_test_noise",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_test_noise",
+      "name": "classify_change",
+      "input": {
+        "significance_level": "noise",
+        "summary": "Only cosmetic changes detected: updated copyright year and minor formatting adjustments. No competitive significance.",
+        "categories": ["other"]
+      }
+    }
+  ],
+  "model": "claude-sonnet-4-5-20241022",
+  "usage": {
+    "input_tokens": 250,
+    "output_tokens": 60
+  }
+}

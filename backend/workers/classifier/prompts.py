@@ -67,7 +67,9 @@ def build_user_prompt(
     parts.append(f"**URL**: {url}")
 
     if truncated:
-        parts.append("\n⚠️ Note: This diff was truncated to fit the analysis budget. The full diff may contain additional changes.")
+        parts.append(
+            "\n⚠️ Note: This diff was truncated to fit the analysis budget. The full diff may contain additional changes."
+        )
 
     parts.append(f"\n**Changes Detected**:\n```diff\n{filtered_diff}\n```")
 

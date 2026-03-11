@@ -40,11 +40,12 @@ def classify_significance(self, diff_id: str) -> dict:
     3. Call Claude → store analysis in MongoDB
     4. If medium+: check suppression → create alert → dispatch notifications
     """
+    from sqlalchemy import select
+
     from app.db.mongodb_sync import get_sync_mongo_db
     from app.db.postgres_sync import get_sync_db
     from app.models.alert import Alert
     from app.models.monitor import Monitor
-    from sqlalchemy import select
     from workers.classifier.claude_client import classify_change
     from workers.tasks.suppression import should_suppress_alert
 
@@ -71,9 +72,7 @@ def classify_significance(self, diff_id: str) -> dict:
         monitor_id = diff_doc["monitor_id"]
 
         # Load monitor
-        monitor = db.execute(
-            select(Monitor).where(Monitor.id == monitor_id)
-        ).scalar_one_or_none()
+        monitor = db.execute(select(Monitor).where(Monitor.id == monitor_id)).scalar_one_or_none()
 
         if not monitor:
             logger.error("classify_monitor_not_found", monitor_id=monitor_id)
@@ -93,7 +92,7 @@ def classify_significance(self, diff_id: str) -> dict:
         except Exception as e:
             # Retryable API errors
             if self.request.retries < self.max_retries:
-                raise self.retry(exc=e, countdown=5 * (3 ** self.request.retries))
+                raise self.retry(exc=e, countdown=5 * (3**self.request.retries))
             result = {
                 "classification": {
                     "significance_level": "medium",
@@ -201,7 +200,7 @@ def classify_significance(self, diff_id: str) -> dict:
     except Exception as e:
         logger.error("classify_error", diff_id=diff_id, error=str(e), exc_info=True)
         if self.request.retries < self.max_retries:
-            raise self.retry(exc=e, countdown=5 * (2 ** self.request.retries))
+            raise self.retry(exc=e, countdown=5 * (2**self.request.retries))
         return {"analysis_id": None, "significance": None, "error": str(e)}
 
     finally:

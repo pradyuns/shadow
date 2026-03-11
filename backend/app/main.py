@@ -1,5 +1,5 @@
-from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import structlog
@@ -13,10 +13,12 @@ from app.config import settings
 from app.db.mongodb import close_mongo_client, get_mongo_db
 from app.db.postgres import engine
 from app.db.redis import close_redis, get_redis_cache
+from app.logging_config import setup_logging
 from app.middleware.error_handler import register_error_handlers
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware
 
+setup_logging()
 logger = structlog.get_logger()
 
 
@@ -49,6 +51,14 @@ app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
 
 register_error_handlers(app)
 app.include_router(api_router)
+
+
+@app.get("/metrics")
+async def metrics():
+    from prometheus_client import generate_latest
+    from starlette.responses import Response
+
+    return Response(content=generate_latest(), media_type="text/plain; charset=utf-8")
 
 
 @app.get("/api/v1/health")

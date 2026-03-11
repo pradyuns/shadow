@@ -41,12 +41,10 @@ class ClassificationResult(BaseModel):
         description="How significant this change is for competitive intelligence"
     )
     summary: str = Field(
-        max_length=1000,
-        description="Concise summary of what changed and why it matters (max 200 words)"
+        max_length=1000, description="Concise summary of what changed and why it matters (max 200 words)"
     )
     categories: list[ChangeCategory] = Field(
-        min_length=1,
-        description="One or more categories that describe the nature of the change"
+        min_length=1, description="One or more categories that describe the nature of the change"
     )
 
 

@@ -7,15 +7,11 @@ from app.models.notification_setting import NotificationSetting
 
 
 async def get_user_settings(db: AsyncSession, user_id: uuid.UUID) -> list[NotificationSetting]:
-    result = await db.execute(
-        select(NotificationSetting).where(NotificationSetting.user_id == user_id)
-    )
+    result = await db.execute(select(NotificationSetting).where(NotificationSetting.user_id == user_id))
     return list(result.scalars().all())
 
 
-async def upsert_setting(
-    db: AsyncSession, user_id: uuid.UUID, channel: str, data: dict
-) -> NotificationSetting:
+async def upsert_setting(db: AsyncSession, user_id: uuid.UUID, channel: str, data: dict) -> NotificationSetting:
     result = await db.execute(
         select(NotificationSetting).where(
             NotificationSetting.user_id == user_id,

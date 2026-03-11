@@ -26,23 +26,13 @@ async def system_stats(
     db: AsyncSession = Depends(get_db),
 ):
     user_count = (await db.execute(select(func.count(User.id)))).scalar()
-    monitor_count = (
-        await db.execute(
-            select(func.count(Monitor.id)).where(Monitor.deleted_at.is_(None))
-        )
-    ).scalar()
+    monitor_count = (await db.execute(select(func.count(Monitor.id)).where(Monitor.deleted_at.is_(None)))).scalar()
     active_monitor_count = (
-        await db.execute(
-            select(func.count(Monitor.id)).where(
-                Monitor.is_active == True, Monitor.deleted_at.is_(None)
-            )
-        )
+        await db.execute(select(func.count(Monitor.id)).where(Monitor.is_active == True, Monitor.deleted_at.is_(None)))
     ).scalar()
     alert_count = (await db.execute(select(func.count(Alert.id)))).scalar()
     unacknowledged_count = (
-        await db.execute(
-            select(func.count(Alert.id)).where(Alert.is_acknowledged == False)
-        )
+        await db.execute(select(func.count(Alert.id)).where(Alert.is_acknowledged == False))
     ).scalar()
 
     mongo_db = get_mongo_db()

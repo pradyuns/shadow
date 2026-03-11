@@ -52,11 +52,13 @@ def initiate_scrape_cycle(batch_size: int | None = None) -> dict:
         try:
             now = datetime.now(timezone.utc)
             result = db.execute(
-                select(Monitor.id).where(
+                select(Monitor.id)
+                .where(
                     Monitor.is_active == True,
                     Monitor.deleted_at.is_(None),
                     Monitor.next_check_at <= now,
-                ).order_by(Monitor.next_check_at)
+                )
+                .order_by(Monitor.next_check_at)
             )
             monitor_ids = [str(row[0]) for row in result.all()]
         finally:
@@ -123,9 +125,7 @@ def scrape_single_url(self, monitor_id: str) -> dict:
 
     try:
         # Load monitor
-        monitor = db.execute(
-            select(Monitor).where(Monitor.id == monitor_id)
-        ).scalar_one_or_none()
+        monitor = db.execute(select(Monitor).where(Monitor.id == monitor_id)).scalar_one_or_none()
 
         if not monitor:
             logger.warning("scrape_monitor_not_found", monitor_id=monitor_id)
@@ -168,7 +168,7 @@ def scrape_single_url(self, monitor_id: str) -> dict:
                 logger.warning("monitor_auto_paused", monitor_id=monitor_id, failures=monitor.consecutive_failures)
 
             if e.is_retryable and self.request.retries < self.max_retries:
-                raise self.retry(exc=e, countdown=10 * (2 ** self.request.retries))
+                raise self.retry(exc=e, countdown=10 * (2**self.request.retries))
             return {"monitor_id": monitor_id, "status": "failed", "error": str(e)}
 
         # Extract text from HTML
@@ -245,7 +245,7 @@ def scrape_single_url(self, monitor_id: str) -> dict:
 
         logger.error("scrape_unexpected_error", monitor_id=monitor_id, error=str(e), exc_info=True)
         if self.request.retries < self.max_retries:
-            raise self.retry(exc=e, countdown=10 * (2 ** self.request.retries))
+            raise self.retry(exc=e, countdown=10 * (2**self.request.retries))
         return {"monitor_id": monitor_id, "status": "failed", "error": str(e)}
 
     finally:

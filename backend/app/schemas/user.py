@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserRead(BaseModel):
@@ -18,4 +18,4 @@ class UserRead(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: str | None = None
-    password: str | None = None
+    password: str | None = Field(default=None, min_length=8, max_length=128)

@@ -71,17 +71,19 @@ class SlackNotifier(BaseNotifier):
 
         # Add "View Details" button if dashboard URL is available
         if payload.dashboard_url:
-            blocks.append({
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": "View Details"},
-                        "url": f"{payload.dashboard_url}/alerts/{payload.alert_id}",
-                        "style": "primary",
-                    }
-                ],
-            })
+            blocks.append(
+                {
+                    "type": "actions",
+                    "elements": [
+                        {
+                            "type": "button",
+                            "text": {"type": "plain_text", "text": "View Details"},
+                            "url": f"{payload.dashboard_url}/alerts/{payload.alert_id}",
+                            "style": "primary",
+                        }
+                    ],
+                }
+            )
 
         slack_payload = {
             "text": f"{emoji} [{payload.severity.upper()}] Change detected on {competitor} ({payload.page_type})",

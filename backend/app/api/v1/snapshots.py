@@ -2,6 +2,7 @@ import uuid
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.db.mongodb import get_mongo_db
@@ -10,7 +11,6 @@ from app.models.user import User
 from app.schemas.snapshot import SnapshotDetail, SnapshotRead
 from app.services.monitor_service import get_monitor
 from app.utils.pagination import PaginationParams
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["snapshots"])
 
