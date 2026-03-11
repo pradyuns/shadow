@@ -48,6 +48,7 @@ async def create_monitor(db: AsyncSession, user: User, data: dict) -> Monitor:
         competitor_name=data.get("competitor_name"),
         page_type=data["page_type"],
         render_js=data.get("render_js", False),
+        use_firecrawl=data.get("use_firecrawl", False),
         check_interval_hours=data.get("check_interval_hours", 6),
         css_selector=data.get("css_selector"),
         noise_patterns=data.get("noise_patterns", []),

@@ -33,6 +33,7 @@ export default function MonitorForm() {
   const [interval, setInterval] = useState(6)
   const [cssSelector, setCssSelector] = useState('')
   const [renderJs, setRenderJs] = useState(false)
+  const [useFirecrawl, setUseFirecrawl] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -45,6 +46,7 @@ export default function MonitorForm() {
         setInterval(data.check_interval_hours)
         setCssSelector(data.css_selector || '')
         setRenderJs(data.render_js)
+        setUseFirecrawl(data.use_firecrawl || false)
       }).catch(() => navigate('/monitors'))
     }
   }, [id, navigate])
@@ -61,6 +63,7 @@ export default function MonitorForm() {
       check_interval_hours: interval,
       css_selector: cssSelector || null,
       render_js: renderJs,
+      use_firecrawl: useFirecrawl,
     }
 
     try {
@@ -189,20 +192,38 @@ export default function MonitorForm() {
             </p>
           </div>
 
-          <div className="flex items-center justify-between p-4 rounded-xl bg-[#FAFAF8] border border-gray-100">
-            <div>
-              <div className="text-sm font-medium text-gray-900">JavaScript Rendering</div>
-              <div className="text-xs text-gray-400 mt-0.5">
-                Enable for SPAs and dynamically loaded content
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-4 rounded-xl bg-[#FAFAF8] border border-gray-100">
+              <div>
+                <div className="text-sm font-medium text-gray-900">JavaScript Rendering</div>
+                <div className="text-xs text-gray-400 mt-0.5">
+                  Enable for SPAs and dynamically loaded content
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setRenderJs(!renderJs)}
+                className={`relative w-11 h-6 rounded-full transition ${renderJs ? 'bg-teal-500' : 'bg-gray-200'}`}
+              >
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${renderJs ? 'translate-x-5.5' : 'translate-x-0.5'}`} />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setRenderJs(!renderJs)}
-              className={`relative w-11 h-6 rounded-full transition ${renderJs ? 'bg-teal-500' : 'bg-gray-200'}`}
-            >
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${renderJs ? 'translate-x-5.5' : 'translate-x-0.5'}`} />
-            </button>
+
+            <div className="flex items-center justify-between p-4 rounded-xl bg-[#FAFAF8] border border-gray-100">
+              <div>
+                <div className="text-sm font-medium text-gray-900">Use Firecrawl</div>
+                <div className="text-xs text-gray-400 mt-0.5">
+                  Always use Firecrawl for bot-protected sites (e.g., Walmart, Amazon)
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUseFirecrawl(!useFirecrawl)}
+                className={`relative w-11 h-6 rounded-full transition ${useFirecrawl ? 'bg-teal-500' : 'bg-gray-200'}`}
+              >
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${useFirecrawl ? 'translate-x-5.5' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
           </div>
 
           <button

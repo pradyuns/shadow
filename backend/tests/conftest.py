@@ -59,6 +59,7 @@ def sample_monitor_data(sample_user_data):
         "competitor_name": "Example Corp",
         "page_type": "pricing",
         "render_js": False,
+        "use_firecrawl": False,
         "check_interval_hours": 6,
         "is_active": True,
         "next_check_at": datetime.now(timezone.utc),

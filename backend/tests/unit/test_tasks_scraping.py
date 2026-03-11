@@ -68,10 +68,11 @@ class TestInitiateScrapeCycle:
 class TestScrapeSingleUrl:
     @patch("workers.tasks.diffing.compute_diff")
     @patch("workers.scraper.text_extractor.extract_text")
+    @patch("workers.scraper.factory.get_firecrawl_scraper")
     @patch("workers.scraper.factory.get_scraper")
     @patch("app.db.mongodb_sync.get_sync_mongo_db")
     @patch("app.db.postgres_sync.get_sync_db")
-    def test_scrape_success(self, mock_pg, mock_mongo, mock_get_scraper, mock_extract, mock_diff):
+    def test_scrape_success(self, mock_pg, mock_mongo, mock_get_scraper, mock_get_firecrawl, mock_extract, mock_diff):
         from workers.tasks.scraping import scrape_single_url
 
         db = MagicMock()
@@ -86,11 +87,14 @@ class TestScrapeSingleUrl:
         monitor.last_checked_at = None
         monitor.url = "https://example.com"
         monitor.render_js = False
+        monitor.use_firecrawl = False
         monitor.css_selector = None
         monitor.page_type = "pricing"
         monitor.check_interval_hours = 6
         monitor.consecutive_failures = 0
         db.execute.return_value.scalar_one_or_none.return_value = monitor
+
+        mock_get_firecrawl.return_value = None  # No Firecrawl configured
 
         scraper = MagicMock()
         mock_get_scraper.return_value = scraper
@@ -164,10 +168,11 @@ class TestScrapeSingleUrl:
         result = scrape_single_url("mon-1")
         assert result["status"] == "skipped_recent"
 
+    @patch("workers.scraper.factory.get_firecrawl_scraper")
     @patch("workers.scraper.factory.get_scraper")
     @patch("app.db.mongodb_sync.get_sync_mongo_db")
     @patch("app.db.postgres_sync.get_sync_db")
-    def test_scrape_error_increments_failures(self, mock_pg, mock_mongo, mock_get_scraper):
+    def test_scrape_error_increments_failures(self, mock_pg, mock_mongo, mock_get_scraper, mock_get_firecrawl):
         from workers.scraper.base import ScraperError
         from workers.tasks.scraping import scrape_single_url
 
@@ -180,12 +185,15 @@ class TestScrapeSingleUrl:
         monitor.deleted_at = None
         monitor.last_checked_at = None
         monitor.render_js = False
+        monitor.use_firecrawl = False
         monitor.url = "https://example.com"
         monitor.css_selector = None
         monitor.page_type = "pricing"
         monitor.check_interval_hours = 6
         monitor.consecutive_failures = 0
         db.execute.return_value.scalar_one_or_none.return_value = monitor
+
+        mock_get_firecrawl.return_value = None  # No Firecrawl fallback
 
         scraper = MagicMock()
         mock_get_scraper.return_value = scraper

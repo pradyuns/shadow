@@ -21,6 +21,7 @@ class MonitorCreate(BaseModel):
     competitor_name: str | None = Field(default=None, max_length=255)
     page_type: PageType
     render_js: bool = False
+    use_firecrawl: bool = False
     check_interval_hours: int = Field(default=6, ge=1, le=168)
     css_selector: str | None = Field(default=None, max_length=1000)
     noise_patterns: list[str] = Field(default_factory=list, max_length=50)
@@ -31,6 +32,7 @@ class MonitorUpdate(BaseModel):
     competitor_name: str | None = None
     page_type: PageType | None = None
     render_js: bool | None = None
+    use_firecrawl: bool | None = None
     check_interval_hours: int | None = Field(default=None, ge=1, le=168)
     is_active: bool | None = None
     css_selector: str | None = Field(default=None, max_length=1000)
@@ -45,6 +47,7 @@ class MonitorRead(BaseModel):
     competitor_name: str | None
     page_type: str
     render_js: bool
+    use_firecrawl: bool
     check_interval_hours: int
     is_active: bool
     next_check_at: datetime

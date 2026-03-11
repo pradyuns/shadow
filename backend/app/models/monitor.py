@@ -20,6 +20,7 @@ class Monitor(UUIDMixin, TimestampMixin, Base):
     competitor_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     page_type: Mapped[str] = mapped_column(String(50), nullable=False)
     render_js: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    use_firecrawl: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     check_interval_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=6)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
     next_check_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

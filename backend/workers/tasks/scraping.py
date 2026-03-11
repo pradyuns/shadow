@@ -10,8 +10,13 @@ Why .delay() instead of Celery chains:
 - Independent retry: if compute_diff fails, scrape_single_url doesn't re-run
 - Independent idempotency: each task checks if its work was already done
 - Simpler error handling: no chain rollback complexity
+
+Firecrawl fallback:
+- If primary scraper returns bot-detection content, automatically retry with Firecrawl
+- Monitors with use_firecrawl=True skip the primary scraper entirely
 """
 
+import re
 from datetime import datetime, timedelta, timezone
 
 import structlog
@@ -21,6 +26,25 @@ from app.config import settings
 from workers.celery_app import celery_app
 
 logger = structlog.get_logger()
+
+# Patterns that indicate bot-detection / CAPTCHA pages
+BOT_DETECTION_PATTERNS = re.compile(
+    r"(robot|captcha|verify you.re human|access denied|blocked|"
+    r"unusual traffic|security check|please enable javascript|"
+    r"checking your browser|attention required|are you a human)",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_bot_detection(extracted_text: str) -> bool:
+    """Check if extracted text looks like a bot-detection page.
+
+    Heuristic: very short text AND contains bot-detection keywords.
+    Real pages almost always have >100 chars of useful content.
+    """
+    if len(extracted_text) > 500:
+        return False
+    return bool(BOT_DETECTION_PATTERNS.search(extracted_text))
 
 
 @celery_app.task(name="workers.tasks.scraping.initiate_scrape_cycle", queue="default")
@@ -109,15 +133,18 @@ def scrape_single_url(self, monitor_id: str) -> dict:
     - Start: last_scrape_status = 'running'
     - Success: status='success', next_check_at updated, failures reset
     - Failure: status='failed', consecutive_failures++, auto-pause at 5
+
+    Firecrawl fallback:
+    - If monitor.use_firecrawl is True, use Firecrawl as primary scraper
+    - Otherwise, use httpx/Playwright and fall back to Firecrawl if bot-detected
     """
-    from bson import ObjectId
     from sqlalchemy import select
 
     from app.db.mongodb_sync import get_sync_mongo_db
     from app.db.postgres_sync import get_sync_db
     from app.models.monitor import Monitor
     from workers.scraper.base import ScraperError
-    from workers.scraper.factory import get_scraper
+    from workers.scraper.factory import get_firecrawl_scraper, get_scraper
     from workers.scraper.text_extractor import extract_text
 
     db = get_sync_db()
@@ -146,8 +173,20 @@ def scrape_single_url(self, monitor_id: str) -> dict:
         monitor.last_scrape_status = "running"
         db.commit()
 
+        # Determine which scraper to use
+        used_firecrawl = False
+        firecrawl_scraper = get_firecrawl_scraper()
+
+        if monitor.use_firecrawl and firecrawl_scraper:
+            # Per-monitor override: always use Firecrawl
+            scraper = firecrawl_scraper
+            used_firecrawl = True
+            logger.info("scrape_using_firecrawl_primary", monitor_id=monitor_id)
+        else:
+            scraper = get_scraper(monitor.render_js)
+
         # Fetch the page
-        scraper = get_scraper(monitor.render_js)
+        result = None
         try:
             result = scraper.fetch(
                 url=monitor.url,
@@ -155,21 +194,42 @@ def scrape_single_url(self, monitor_id: str) -> dict:
                 css_selector=monitor.css_selector,
             )
         except ScraperError as e:
-            monitor.last_scrape_status = "failed"
-            monitor.last_scrape_error = str(e)[:500]
-            monitor.consecutive_failures += 1
-            monitor.next_check_at = datetime.now(timezone.utc) + timedelta(hours=monitor.check_interval_hours)
-            db.commit()
+            # If primary scraper failed and Firecrawl is available, try it
+            if not used_firecrawl and firecrawl_scraper:
+                logger.info(
+                    "scrape_primary_failed_trying_firecrawl",
+                    monitor_id=monitor_id,
+                    primary_error=str(e)[:200],
+                )
+                try:
+                    result = firecrawl_scraper.fetch(
+                        url=monitor.url,
+                        timeout_seconds=settings.scrape_timeout_seconds,
+                        css_selector=monitor.css_selector,
+                    )
+                    used_firecrawl = True
+                except ScraperError:
+                    pass  # Fall through to error handling below
 
-            # Auto-pause after 5 consecutive failures
-            if monitor.consecutive_failures >= 5:
-                monitor.is_active = False
+            if result is None:
+                # All scrapers failed
+                monitor.last_scrape_status = "failed"
+                monitor.last_scrape_error = str(e)[:500]
+                monitor.consecutive_failures += 1
+                monitor.next_check_at = datetime.now(timezone.utc) + timedelta(hours=monitor.check_interval_hours)
                 db.commit()
-                logger.warning("monitor_auto_paused", monitor_id=monitor_id, failures=monitor.consecutive_failures)
 
-            if e.is_retryable and self.request.retries < self.max_retries:
-                raise self.retry(exc=e, countdown=10 * (2**self.request.retries))
-            return {"monitor_id": monitor_id, "status": "failed", "error": str(e)}
+                # Auto-pause after 5 consecutive failures
+                if monitor.consecutive_failures >= 5:
+                    monitor.is_active = False
+                    db.commit()
+                    logger.warning(
+                        "monitor_auto_paused", monitor_id=monitor_id, failures=monitor.consecutive_failures
+                    )
+
+                if e.is_retryable and self.request.retries < self.max_retries:
+                    raise self.retry(exc=e, countdown=10 * (2**self.request.retries))
+                return {"monitor_id": monitor_id, "status": "failed", "error": str(e)}
 
         # Extract text from HTML
         extraction = extract_text(
@@ -178,8 +238,44 @@ def scrape_single_url(self, monitor_id: str) -> dict:
             page_type=monitor.page_type,
         )
 
+        # Bot detection fallback: if primary scraper got a CAPTCHA page, retry with Firecrawl
+        if (
+            not used_firecrawl
+            and firecrawl_scraper
+            and _looks_like_bot_detection(extraction["extracted_text"])
+        ):
+            logger.info(
+                "scrape_bot_detected_trying_firecrawl",
+                monitor_id=monitor_id,
+                text_preview=extraction["extracted_text"][:100],
+            )
+            try:
+                result = firecrawl_scraper.fetch(
+                    url=monitor.url,
+                    timeout_seconds=settings.scrape_timeout_seconds,
+                    css_selector=monitor.css_selector,
+                )
+                extraction = extract_text(
+                    raw_html=result.raw_html,
+                    css_selector=monitor.css_selector,
+                    page_type=monitor.page_type,
+                )
+                used_firecrawl = True
+                logger.info(
+                    "scrape_firecrawl_fallback_success",
+                    monitor_id=monitor_id,
+                    text_length=extraction["text_length"],
+                )
+            except ScraperError as firecrawl_err:
+                logger.warning(
+                    "scrape_firecrawl_fallback_failed",
+                    monitor_id=monitor_id,
+                    error=str(firecrawl_err)[:200],
+                )
+                # Continue with the original (bot-detected) content
+
         # Auto-upgrade to Playwright if httpx returned too little content
-        if extraction["auto_upgrade_js"] and not monitor.render_js:
+        if extraction["auto_upgrade_js"] and not monitor.render_js and not used_firecrawl:
             monitor.render_js = True
             logger.info("monitor_auto_upgrade_js", monitor_id=monitor_id)
             monitor.next_check_at = datetime.now(timezone.utc) + timedelta(minutes=5)
@@ -219,6 +315,8 @@ def scrape_single_url(self, monitor_id: str) -> dict:
             snapshot_id=snapshot_id,
             text_length=extraction["text_length"],
             fetch_ms=result.fetch_duration_ms,
+            render_method=result.render_method,
+            used_firecrawl=used_firecrawl,
         )
 
         # Dispatch diff computation
@@ -231,6 +329,7 @@ def scrape_single_url(self, monitor_id: str) -> dict:
             "snapshot_id": snapshot_id,
             "status": "success",
             "text_hash": extraction["text_hash"],
+            "render_method": result.render_method,
         }
 
     except Exception as e:

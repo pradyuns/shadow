@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]
 
+    # Firecrawl (fallback scraper for bot-protected sites)
+    firecrawl_api_key: str = ""
+
     # Scraping
     default_check_interval_hours: int = 6
     max_monitors_per_user: int = 50

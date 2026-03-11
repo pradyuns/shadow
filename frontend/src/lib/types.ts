@@ -10,6 +10,7 @@ export interface Monitor {
   check_interval_hours: number
   css_selector: string | null
   render_js: boolean
+  use_firecrawl: boolean
   is_active: boolean
   next_check_at: string
   last_checked_at: string | null

@@ -33,6 +33,7 @@ def _mock_monitor(user_id):
     m.competitor_name = "Example Corp"
     m.page_type = "pricing"
     m.render_js = False
+    m.use_firecrawl = False
     m.check_interval_hours = 6
     m.is_active = True
     m.next_check_at = datetime.now(timezone.utc)
