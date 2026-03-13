@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Bell, GitCompare, Globe, ShieldCheck } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowRight, Bell, CheckCircle2, GitCompare, Globe, ShieldCheck, XCircle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { extractApiErrorMessage } from '../lib/api'
 
@@ -17,6 +17,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const verified = searchParams.get('verified') === 'true'
+  const verifyError = searchParams.get('verify_error')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,6 +113,22 @@ export default function Login() {
                 Use your account to review active monitors, recent diffs, and unresolved alerts.
               </p>
             </div>
+
+            {verified && (
+              <div className="mt-6 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                Email verified. You can now sign in with full access.
+              </div>
+            )}
+
+            {verifyError && (
+              <div className="mt-6 flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <XCircle className="h-4 w-4 shrink-0" />
+                {verifyError === 'invalid'
+                  ? 'Verification link is invalid or expired. Sign in and resend.'
+                  : 'Account not found. The link may have expired.'}
+              </div>
+            )}
 
             {error && (
               <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

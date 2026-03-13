@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_verified_user
 from app.db.postgres import get_db
 from app.models.user import User
 from app.schemas.monitor import MonitorCreate, MonitorRead, MonitorUpdate, PageType
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/monitors", tags=["monitors"])
 @router.post("", response_model=MonitorRead, status_code=status.HTTP_201_CREATED)
 async def create(
     body: MonitorCreate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -73,7 +73,7 @@ async def get_one(
 async def update(
     monitor_id: uuid.UUID,
     body: MonitorUpdate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
 ):
     monitor = await get_monitor(db, monitor_id, user.id)
@@ -89,7 +89,7 @@ async def update(
 @router.delete("/{monitor_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete(
     monitor_id: uuid.UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
 ):
     monitor = await get_monitor(db, monitor_id, user.id)
@@ -101,7 +101,7 @@ async def delete(
 @router.post("/{monitor_id}/restore", response_model=MonitorRead)
 async def restore(
     monitor_id: uuid.UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
 ):
     monitor = await restore_monitor(db, monitor_id, user.id)
@@ -113,7 +113,7 @@ async def restore(
 @router.post("/{monitor_id}/scrape", status_code=status.HTTP_202_ACCEPTED)
 async def trigger_scrape(
     monitor_id: uuid.UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
 ):
     monitor = await get_monitor(db, monitor_id, user.id)

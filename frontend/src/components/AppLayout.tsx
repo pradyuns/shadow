@@ -5,6 +5,7 @@ import {
   Globe,
   LayoutDashboard,
   LogOut,
+  Mail,
   Menu,
   Radar,
   Settings,
@@ -12,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import api from '../lib/api'
 
 const navItems = [
   {
@@ -44,11 +46,27 @@ export default function AppLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendMessage, setResendMessage] = useState('')
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
+
+  const handleResendVerification = async () => {
+    setResending(true)
+    setResendMessage('')
+    try {
+      await api.post('/auth/resend-verification')
+      setResendMessage('Verification email sent. Check your inbox.')
+    } catch {
+      setResendMessage('Could not send email. Try again later.')
+    }
+    setResending(false)
+  }
+
+  const showVerificationBanner = user && !user.is_email_verified
 
   return (
     <div className="min-h-screen">
@@ -190,6 +208,29 @@ export default function AppLayout() {
             </div>
           </div>
         </header>
+
+        {showVerificationBanner && (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 lg:px-8">
+            <div className="mx-auto flex max-w-7xl items-center gap-3">
+              <Mail className="h-4 w-4 shrink-0 text-amber-600" />
+              <p className="flex-1 text-sm text-amber-800">
+                Verify your email to unlock full access.{' '}
+                {resendMessage ? (
+                  <span className="font-medium">{resendMessage}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resending}
+                    className="font-semibold underline hover:no-underline disabled:opacity-50"
+                  >
+                    {resending ? 'Sending...' : 'Resend verification email'}
+                  </button>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
 
         <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
           <Outlet />

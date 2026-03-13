@@ -15,5 +15,6 @@ celery_app.conf.update(
         "workers.tasks.analysis",
         "workers.tasks.notifications",
         "workers.tasks.maintenance",
+        "workers.tasks.email_verification",
     ]
 )

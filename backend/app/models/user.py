@@ -16,6 +16,8 @@ class User(UUIDMixin, TimestampMixin, Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     max_monitors: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
 
     # Relationships

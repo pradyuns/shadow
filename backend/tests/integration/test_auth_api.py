@@ -33,10 +33,15 @@ class TestRegisterEndpoint:
         mock_user.full_name = "New User"
         mock_user.is_active = True
         mock_user.is_admin = False
+        mock_user.is_email_verified = False
         mock_user.max_monitors = 50
         mock_user.created_at = datetime.now(timezone.utc)
 
-        with patch("app.api.v1.auth.register_user", return_value=mock_user):
+        with (
+            patch("app.api.v1.auth.register_user", return_value=mock_user),
+            patch("workers.tasks.email_verification.send_verification_email") as mock_task,
+        ):
+            mock_task.delay = MagicMock()
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 response = await ac.post(
                     "/api/v1/auth/register",

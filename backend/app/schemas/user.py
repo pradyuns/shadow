@@ -10,6 +10,7 @@ class UserRead(BaseModel):
     full_name: str
     is_active: bool
     is_admin: bool
+    is_email_verified: bool
     max_monitors: int
     created_at: datetime
 
