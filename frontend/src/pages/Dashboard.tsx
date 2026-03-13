@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import {
+  AlertTriangle,
+  ArrowRight,
+  Bell,
+  Clock3,
+  Eye,
+  FileText,
+  Plus,
+  Radar,
+  ShieldCheck,
+} from 'lucide-react'
 import api from '../lib/api'
-import type { Monitor, Alert } from '../lib/types'
+import type { Alert, Monitor } from '../lib/types'
 import { SEVERITY_COLORS, type SeverityLevel } from '../lib/types'
-import { Activity, Eye, Bell, AlertTriangle, Plus, ArrowRight, Clock } from 'lucide-react'
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -14,6 +24,14 @@ function timeAgo(dateStr: string) {
   if (hrs < 24) return `${hrs}h ago`
   const days = Math.floor(hrs / 24)
   return `${days}d ago`
+}
+
+function nextCheckWindow(dateStr: string) {
+  const diff = new Date(dateStr).getTime() - Date.now()
+  const mins = Math.max(Math.round(diff / 60000), 0)
+  if (mins <= 60) return `Due in ${mins}m`
+  const hrs = Math.round(mins / 60)
+  return `Due in ${hrs}h`
 }
 
 export default function Dashboard() {
@@ -32,134 +50,282 @@ export default function Dashboard() {
     })
   }, [])
 
-  const activeMonitors = monitors.filter((m) => m.is_active && !m.is_deleted)
-  const recentChanges = monitors.filter((m) => m.last_change_at).length
-  const unackedAlerts = alerts.filter((a) => !a.is_acknowledged)
-  const criticalAlerts = alerts.filter((a) => a.severity === 'critical')
+  const activeMonitors = monitors.filter((monitor) => monitor.is_active)
+  const monitorsWithSnapshots = monitors.filter((monitor) => monitor.last_checked_at)
+  const recentChanges = monitors.filter((monitor) => monitor.last_change_at).length
+  const unackedAlerts = alerts.filter((alert) => !alert.is_acknowledged)
+  const criticalAlerts = alerts.filter((alert) => alert.severity === 'critical')
+  const healthyMonitors = activeMonitors.filter((monitor) => monitor.consecutive_failures === 0).length
+  const monitorsRequiringReview = activeMonitors.filter((monitor) => monitor.consecutive_failures > 0)
 
   const stats = [
-    { label: 'Active Monitors', value: activeMonitors.length, icon: Eye, color: 'text-teal-600', bg: 'bg-teal-50' },
-    { label: 'Changes Detected', value: recentChanges, icon: Activity, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Open Alerts', value: unackedAlerts.length, icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Critical', value: criticalAlerts.length, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
+    {
+      label: 'Active monitors',
+      value: activeMonitors.length,
+      supporting: `${healthyMonitors} healthy`,
+      icon: Radar,
+      iconTone: 'bg-blue-50 text-blue-700',
+    },
+    {
+      label: 'Captured snapshots',
+      value: monitorsWithSnapshots.length,
+      supporting: `${recentChanges} recent changes`,
+      icon: FileText,
+      iconTone: 'bg-emerald-50 text-emerald-700',
+    },
+    {
+      label: 'Open alerts',
+      value: unackedAlerts.length,
+      supporting: `${criticalAlerts.length} critical`,
+      icon: Bell,
+      iconTone: 'bg-amber-50 text-amber-700',
+    },
+    {
+      label: 'Pages needing attention',
+      value: monitorsRequiringReview.length,
+      supporting: monitorsRequiringReview.length ? 'Review scrape failures' : 'No failures reported',
+      icon: AlertTriangle,
+      iconTone: 'bg-rose-50 text-rose-700',
+    },
   ]
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-400 mt-1">Your competitive intelligence at a glance</p>
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="page-kicker">Overview</p>
+          <h2 className="mt-3 page-title">Monitoring operations</h2>
+          <p className="mt-3 page-subtitle">
+            Review live coverage, recent diffs, and unresolved alerts from a layout that feels closer
+            to an internal product dashboard than a design experiment.
+          </p>
         </div>
-        <Link
-          to="/monitors/new"
-          className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-full text-sm font-semibold hover:bg-gray-800 transition"
-        >
-          <Plus className="w-4 h-4" />
-          Add Monitor
-        </Link>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Link to="/alerts" className="btn-secondary">
+            Review alerts
+          </Link>
+          <Link to="/monitors/new" className="btn-primary">
+            <Plus className="h-4 w-4" />
+            Add monitor
+          </Link>
+        </div>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl p-5 border border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-gray-400">{s.label}</span>
-              <div className={`w-8 h-8 rounded-xl ${s.bg} flex items-center justify-center`}>
-                <s.icon className={`w-4 h-4 ${s.color}`} />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => (
+          <div key={stat.label} className="metric-card">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-sm font-medium text-slate-500">{stat.label}</div>
+                <div className="mt-3 text-4xl font-semibold text-slate-950">{stat.value}</div>
+              </div>
+              <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${stat.iconTone}`}>
+                <stat.icon className="h-5 w-5" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-gray-900">{s.value}</div>
+            <div className="mt-4 text-sm text-slate-600">{stat.supporting}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent alerts */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
-            <h2 className="text-sm font-semibold text-gray-900">Recent Alerts</h2>
-            <Link to="/alerts" className="text-xs text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1">
-              View all <ArrowRight className="w-3 h-3" />
+      <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
+        <div className="panel overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+            <div>
+              <div className="text-lg font-semibold text-slate-950">Recent alerts</div>
+              <div className="mt-1 text-sm text-slate-600">
+                Latest changes routed into the review queue.
+              </div>
+            </div>
+            <Link to="/alerts" className="btn-ghost">
+              View all
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
+
           {alerts.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <Bell className="w-8 h-8 text-gray-200 mx-auto mb-3" />
-              <p className="text-sm text-gray-400">No alerts yet. Add a monitor to get started.</p>
+              <Bell className="mx-auto h-10 w-10 text-slate-300" />
+              <div className="mt-4 text-base font-semibold text-slate-950">No alerts yet</div>
+              <div className="mt-2 text-sm text-slate-600">
+                Add a monitor and trigger a scrape to start generating reviewable events.
+              </div>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-slate-200">
               {alerts.slice(0, 6).map((alert) => (
                 <Link
                   key={alert.id}
-                  to={`/alerts`}
-                  className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50/50 transition"
+                  to="/alerts"
+                  className="grid gap-4 px-6 py-4 hover:bg-slate-50/80 lg:grid-cols-[auto_1fr_auto]"
                 >
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${SEVERITY_COLORS[alert.severity as SeverityLevel] || SEVERITY_COLORS.low}`}>
-                    {alert.severity.toUpperCase()}
-                  </span>
-                  <span className="text-sm text-gray-900 font-medium truncate flex-1">
-                    {alert.title || alert.summary}
-                  </span>
-                  <span className="text-xs text-gray-300 shrink-0 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {timeAgo(alert.created_at)}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+                  <div className="flex items-center">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        SEVERITY_COLORS[alert.severity as SeverityLevel] || SEVERITY_COLORS.low
+                      }`}
+                    >
+                      {alert.severity.toUpperCase()}
+                    </span>
+                  </div>
 
-        {/* Monitors overview */}
-        <div className="bg-white rounded-2xl border border-gray-100">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
-            <h2 className="text-sm font-semibold text-gray-900">Monitors</h2>
-            <Link to="/monitors" className="text-xs text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1">
-              Manage <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-          {activeMonitors.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <Eye className="w-8 h-8 text-gray-200 mx-auto mb-3" />
-              <p className="text-sm text-gray-400 mb-3">No monitors yet</p>
-              <Link
-                to="/monitors/new"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-full text-xs font-semibold hover:bg-gray-800 transition"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add your first
-              </Link>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {activeMonitors.slice(0, 6).map((m) => (
-                <Link
-                  key={m.id}
-                  to={`/monitors/${m.id}`}
-                  className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50/50 transition"
-                >
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${m.consecutive_failures > 0 ? 'bg-amber-400' : 'bg-teal-400'}`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">{m.name}</div>
-                    <div className="text-xs text-gray-400 truncate">{m.url}</div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-950">
+                      {alert.title || 'Change detected'}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-600">{alert.summary}</div>
+                  </div>
+
+                  <div className="text-right text-xs text-slate-500">
+                    <div>{timeAgo(alert.created_at)}</div>
+                    <div className="mt-1">{alert.is_acknowledged ? 'Acknowledged' : 'Pending review'}</div>
                   </div>
                 </Link>
               ))}
             </div>
           )}
         </div>
+
+        <div className="space-y-6">
+          <div className="panel p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-slate-950">Workflow status</div>
+                <div className="text-sm text-slate-600">The core monitoring path at a glance.</div>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-950">1. Configure monitors</div>
+                  <div className="text-xs text-slate-500">Tracked sources with schedule and capture rules</div>
+                </div>
+                <div className="text-sm font-semibold text-slate-950">{activeMonitors.length}</div>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-950">2. Capture snapshots</div>
+                  <div className="text-xs text-slate-500">Monitors with at least one completed check</div>
+                </div>
+                <div className="text-sm font-semibold text-slate-950">{monitorsWithSnapshots.length}</div>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-950">3. Review alerts</div>
+                  <div className="text-xs text-slate-500">Unacknowledged alerts still waiting for triage</div>
+                </div>
+                <div className="text-sm font-semibold text-slate-950">{unackedAlerts.length}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel p-6">
+            <div className="text-lg font-semibold text-slate-950">Upcoming checks</div>
+            <div className="mt-1 text-sm text-slate-600">
+              Next scheduled runs across active monitors.
+            </div>
+
+            {activeMonitors.length === 0 ? (
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+                No active monitors scheduled yet.
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {activeMonitors
+                  .slice()
+                  .sort((left, right) => new Date(left.next_check_at).getTime() - new Date(right.next_check_at).getTime())
+                  .slice(0, 4)
+                  .map((monitor) => (
+                    <Link
+                      key={monitor.id}
+                      to={`/monitors/${monitor.id}`}
+                      className="flex items-start justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 hover:border-slate-300 hover:bg-white"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-950">{monitor.name}</div>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                          <Clock3 className="h-3.5 w-3.5" />
+                          {nextCheckWindow(monitor.next_check_at)}
+                        </div>
+                      </div>
+                      <div className="ml-4 text-xs text-slate-500">
+                        Every {monitor.check_interval_hours}h
+                      </div>
+                    </Link>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="panel overflow-hidden">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+          <div>
+            <div className="text-lg font-semibold text-slate-950">Monitor coverage</div>
+            <div className="mt-1 text-sm text-slate-600">
+              Quick view of active sources and recent scrape health.
+            </div>
+          </div>
+          <Link to="/monitors" className="btn-ghost">
+            Manage monitors
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {activeMonitors.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <Eye className="mx-auto h-10 w-10 text-slate-300" />
+            <div className="mt-4 text-base font-semibold text-slate-950">No active monitors</div>
+            <div className="mt-2 text-sm text-slate-600">
+              Create your first monitor to start collecting snapshots and alerts.
+            </div>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-200">
+            {activeMonitors.slice(0, 6).map((monitor) => (
+              <Link
+                key={monitor.id}
+                to={`/monitors/${monitor.id}`}
+                className="grid gap-4 px-6 py-4 hover:bg-slate-50/80 lg:grid-cols-[1.5fr_0.7fr_0.7fr]"
+              >
+                <div>
+                  <div className="text-sm font-semibold text-slate-950">{monitor.name}</div>
+                  <div className="mt-1 text-sm text-slate-600">{monitor.url}</div>
+                </div>
+
+                <div className="text-sm text-slate-600">
+                  <div className="font-medium text-slate-950">{monitor.page_type}</div>
+                  <div className="mt-1">
+                    {monitor.last_change_at ? `Changed ${timeAgo(monitor.last_change_at)}` : 'No changes detected'}
+                  </div>
+                </div>
+
+                <div className="text-sm text-slate-600">
+                  <div className="font-medium text-slate-950">
+                    {monitor.consecutive_failures > 0 ? 'Needs review' : 'Healthy'}
+                  </div>
+                  <div className="mt-1">
+                    {monitor.last_checked_at ? `Checked ${timeAgo(monitor.last_checked_at)}` : 'Not checked yet'}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

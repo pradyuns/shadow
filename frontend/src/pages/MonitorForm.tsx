@@ -1,25 +1,25 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import api from '../lib/api'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, CheckCircle2, Globe, Save, ShieldCheck } from 'lucide-react'
+import api, { extractApiErrorMessage } from '../lib/api'
 import type { PageType } from '../lib/types'
-import { ArrowLeft, Globe, Save } from 'lucide-react'
 
-const PAGE_TYPES: { value: PageType; label: string }[] = [
-  { value: 'pricing', label: 'Pricing' },
-  { value: 'changelog', label: 'Changelog' },
-  { value: 'homepage', label: 'Homepage' },
-  { value: 'jobs', label: 'Jobs' },
-  { value: 'blog', label: 'Blog' },
-  { value: 'docs', label: 'Docs' },
-  { value: 'other', label: 'Other' },
+const PAGE_TYPES: { value: PageType; label: string; description: string }[] = [
+  { value: 'pricing', label: 'Pricing', description: 'Packaging, plan changes, discounting' },
+  { value: 'changelog', label: 'Changelog', description: 'Product announcements and releases' },
+  { value: 'homepage', label: 'Homepage', description: 'Messaging, positioning, major launches' },
+  { value: 'jobs', label: 'Jobs', description: 'Team growth, role focus, hiring patterns' },
+  { value: 'blog', label: 'Blog', description: 'Thought leadership and campaign themes' },
+  { value: 'docs', label: 'Docs', description: 'API or product documentation changes' },
+  { value: 'other', label: 'Other', description: 'Any other public page worth tracking' },
 ]
 
 const INTERVALS = [
-  { value: 1, label: 'Every hour' },
+  { value: 1, label: 'Hourly' },
   { value: 3, label: 'Every 3 hours' },
   { value: 6, label: 'Every 6 hours' },
-  { value: 12, label: 'Every 12 hours' },
-  { value: 24, label: 'Every 24 hours' },
+  { value: 12, label: 'Twice a day' },
+  { value: 24, label: 'Daily' },
 ]
 
 export default function MonitorForm() {
@@ -28,27 +28,37 @@ export default function MonitorForm() {
   const navigate = useNavigate()
 
   const [name, setName] = useState('')
+  const [competitorName, setCompetitorName] = useState('')
   const [url, setUrl] = useState('')
   const [pageType, setPageType] = useState<PageType>('homepage')
   const [interval, setInterval] = useState(6)
   const [cssSelector, setCssSelector] = useState('')
   const [renderJs, setRenderJs] = useState(false)
   const [useFirecrawl, setUseFirecrawl] = useState(false)
+  const [initializing, setInitializing] = useState(Boolean(id))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (id) {
-      api.get(`/monitors/${id}`).then(({ data }) => {
+    if (!id) {
+      setInitializing(false)
+      return
+    }
+
+    api
+      .get(`/monitors/${id}`)
+      .then(({ data }) => {
         setName(data.name)
+        setCompetitorName(data.competitor_name || '')
         setUrl(data.url)
         setPageType(data.page_type || 'homepage')
         setInterval(data.check_interval_hours)
         setCssSelector(data.css_selector || '')
         setRenderJs(data.render_js)
         setUseFirecrawl(data.use_firecrawl || false)
-      }).catch(() => navigate('/monitors'))
-    }
+        setInitializing(false)
+      })
+      .catch(() => navigate('/monitors'))
   }, [id, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,6 +68,7 @@ export default function MonitorForm() {
 
     const payload = {
       name,
+      competitor_name: competitorName || null,
       url,
       page_type: pageType,
       check_interval_hours: interval,
@@ -74,167 +85,307 @@ export default function MonitorForm() {
         const { data } = await api.post('/monitors', payload)
         navigate(`/monitors/${data.id}`)
       }
-    } catch (err: any) {
-      const detail = err.response?.data?.detail
-      setError(typeof detail === 'string' ? detail : 'Failed to save monitor')
+    } catch (error: unknown) {
+      setError(extractApiErrorMessage(error, 'Failed to save monitor'))
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="max-w-xl mx-auto">
-      <button
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition mb-6"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back
-      </button>
+  if (initializing) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+      </div>
+    )
+  }
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
-            <Globe className="w-5 h-5 text-teal-700" />
+  const activePageType = PAGE_TYPES.find((page) => page.value === pageType)
+  const activeInterval = INTERVALS.find((option) => option.value === interval)
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4">
+        <Link to={id ? `/monitors/${id}` : '/monitors'} className="btn-ghost w-fit">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Link>
+
+        <div className="max-w-3xl">
+          <p className="page-kicker">{isEdit ? 'Edit Monitor' : 'New Monitor'}</p>
+          <h2 className="mt-3 page-title">
+            {isEdit ? 'Update capture settings' : 'Create a monitor'}
+          </h2>
+          <p className="mt-3 page-subtitle">
+            Keep the setup focused: what page to track, how often to check it, and whether capture needs a scoped selector or JavaScript rendering.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+        <form onSubmit={handleSubmit} className="panel p-8">
+          {error && (
+            <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-8">
+            <section>
+              <div className="mb-5">
+                <div className="text-base font-semibold text-slate-950">Monitor details</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  Give the source a clear internal name so review is fast later.
+                </div>
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">Monitor name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="input-field"
+                    placeholder="Stripe pricing page"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Competitor name
+                  </label>
+                  <input
+                    type="text"
+                    value={competitorName}
+                    onChange={(e) => setCompetitorName(e.target.value)}
+                    className="input-field"
+                    placeholder="Stripe"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <label className="mb-2 block text-sm font-medium text-slate-700">URL</label>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="input-field"
+                  placeholder="https://stripe.com/pricing"
+                  required
+                />
+              </div>
+            </section>
+
+            <section>
+              <div className="mb-5">
+                <div className="text-base font-semibold text-slate-950">Page context</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  Pick the best-fit page type so future review feels more organized.
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {PAGE_TYPES.map((page) => (
+                  <button
+                    key={page.value}
+                    type="button"
+                    onClick={() => setPageType(page.value)}
+                    className={`rounded-2xl border px-4 py-4 text-left ${
+                      pageType === page.value
+                        ? 'border-blue-500 bg-blue-50 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="text-sm font-semibold text-slate-950">{page.label}</div>
+                    <div className="mt-2 text-xs leading-5 text-slate-600">{page.description}</div>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <div className="mb-5">
+                <div className="text-base font-semibold text-slate-950">Capture settings</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  Control cadence, scope, and fallback scraping behavior.
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Check interval</label>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                  {INTERVALS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setInterval(option.value)}
+                      className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
+                        interval === option.value
+                          ? 'border-slate-950 bg-slate-950 text-white'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  CSS selector
+                </label>
+                <input
+                  type="text"
+                  value={cssSelector}
+                  onChange={(e) => setCssSelector(e.target.value)}
+                  className="input-field"
+                  placeholder="#pricing-table, .plan-card"
+                />
+                <p className="helper-text mt-2">
+                  Use this only if the full page contains too much unrelated content or frequent layout churn.
+                </p>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setRenderJs(!renderJs)}
+                  className={`rounded-2xl border p-4 text-left ${
+                    renderJs
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-950">JavaScript rendering</div>
+                      <div className="mt-2 text-xs leading-5 text-slate-600">
+                        Use when the page is an SPA or loads important content after the initial HTML response.
+                      </div>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        renderJs ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {renderJs ? 'Enabled' : 'Off'}
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUseFirecrawl(!useFirecrawl)}
+                  className={`rounded-2xl border p-4 text-left ${
+                    useFirecrawl
+                      ? 'border-emerald-500 bg-emerald-50'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-950">Firecrawl fallback</div>
+                      <div className="mt-2 text-xs leading-5 text-slate-600">
+                        Prefer this for bot-protected sites or pages that fail consistently with the default scraper.
+                      </div>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        useFirecrawl ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {useFirecrawl ? 'Enabled' : 'Off'}
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </section>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">
-              {isEdit ? 'Edit Monitor' : 'New Monitor'}
-            </h1>
-            <p className="text-xs text-gray-400">
-              {isEdit ? 'Update monitoring configuration' : 'Track a competitor page'}
-            </p>
+
+          <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+            <Link to={id ? `/monitors/${id}` : '/monitors'} className="btn-secondary">
+              Cancel
+            </Link>
+            <button type="submit" disabled={loading} className="btn-primary">
+              <Save className="h-4 w-4" />
+              {loading ? 'Saving...' : isEdit ? 'Save changes' : 'Create monitor'}
+            </button>
+          </div>
+        </form>
+
+        <div className="space-y-6">
+          <div className="panel p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                <Globe className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-slate-950">Configuration summary</div>
+                <div className="text-sm text-slate-600">
+                  Live preview of the monitor setup you are about to save.
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Page type</div>
+                <div className="mt-2 text-sm font-semibold text-slate-950">{activePageType?.label}</div>
+                <div className="mt-1 text-sm text-slate-600">{activePageType?.description}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Cadence</div>
+                <div className="mt-2 text-sm font-semibold text-slate-950">{activeInterval?.label}</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {renderJs ? 'JavaScript rendering on' : 'Standard HTML capture'}
+                  {useFirecrawl ? ' with Firecrawl fallback' : ''}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Scope</div>
+                <div className="mt-2 text-sm font-semibold text-slate-950">
+                  {cssSelector || 'Full page'}
+                </div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {cssSelector
+                    ? 'Changes will focus on the selected content block.'
+                    : 'Changes will be computed across the page content.'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-slate-950">What makes this feel better</div>
+                <div className="text-sm text-slate-600">
+                  Cleaner defaults and fewer ambiguous choices.
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {[
+                'Competitor name is captured explicitly, which makes the monitor list easier to scan.',
+                'Page type and cadence are surfaced as clear decision blocks rather than tiny controls.',
+                'Capture options read like operational settings instead of experimental toggles.',
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-3 text-sm leading-7 text-slate-600">
+                  <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-50 text-rose-700 text-sm">{error}</div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-[#FAFAF8] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition"
-              placeholder="Stripe Pricing Page"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">URL</label>
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-[#FAFAF8] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition"
-              placeholder="https://stripe.com/pricing"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Page Type</label>
-            <div className="grid grid-cols-4 gap-2">
-              {PAGE_TYPES.map((pt) => (
-                <button
-                  key={pt.value}
-                  type="button"
-                  onClick={() => setPageType(pt.value)}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium transition border ${
-                    pageType === pt.value
-                      ? 'bg-gray-900 text-white border-gray-900'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  {pt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Check Interval</label>
-            <div className="grid grid-cols-5 gap-2">
-              {INTERVALS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setInterval(opt.value)}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium transition border ${
-                    interval === opt.value
-                      ? 'bg-gray-900 text-white border-gray-900'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              CSS Selector <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={cssSelector}
-              onChange={(e) => setCssSelector(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-[#FAFAF8] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition font-mono"
-              placeholder="#pricing-table, .plan-card"
-            />
-            <p className="text-xs text-gray-400 mt-1.5">
-              Focus on specific page elements. Leave blank to monitor the full page.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-[#FAFAF8] border border-gray-100">
-              <div>
-                <div className="text-sm font-medium text-gray-900">JavaScript Rendering</div>
-                <div className="text-xs text-gray-400 mt-0.5">
-                  Enable for SPAs and dynamically loaded content
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRenderJs(!renderJs)}
-                className={`relative w-11 h-6 rounded-full transition ${renderJs ? 'bg-teal-500' : 'bg-gray-200'}`}
-              >
-                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${renderJs ? 'translate-x-5.5' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-xl bg-[#FAFAF8] border border-gray-100">
-              <div>
-                <div className="text-sm font-medium text-gray-900">Use Firecrawl</div>
-                <div className="text-xs text-gray-400 mt-0.5">
-                  Always use Firecrawl for bot-protected sites (e.g., Walmart, Amazon)
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setUseFirecrawl(!useFirecrawl)}
-                className={`relative w-11 h-6 rounded-full transition ${useFirecrawl ? 'bg-teal-500' : 'bg-gray-200'}`}
-              >
-                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${useFirecrawl ? 'translate-x-5.5' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-gray-900 text-white rounded-full text-sm font-semibold hover:bg-gray-800 transition disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Monitor'}
-          </button>
-        </form>
       </div>
     </div>
   )

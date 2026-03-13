@@ -17,8 +17,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="panel w-full max-w-sm p-8 text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          <div className="mt-4 text-sm font-medium text-slate-700">Loading your workspace</div>
+        </div>
       </div>
     )
   }
@@ -44,12 +47,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes */}
         <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-        {/* Protected app routes */}
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/monitors" element={<Monitors />} />
@@ -60,7 +61,6 @@ export default function App() {
           <Route path="/settings" element={<Settings />} />
         </Route>
 
-        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

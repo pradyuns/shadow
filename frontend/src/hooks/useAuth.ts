@@ -14,6 +14,7 @@ interface AuthState {
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, fullName: string) => Promise<void>
+  setUser: (user: User | null) => void
   logout: () => void
   loadFromStorage: () => void
 }
@@ -72,6 +73,16 @@ export const useAuth = create<AuthState>((set) => ({
     })
     localStorage.setItem('user', JSON.stringify(user))
     set({ user, token: accessToken })
+  },
+
+  setUser: (user) => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user))
+    } else {
+      localStorage.removeItem('user')
+    }
+
+    set({ user })
   },
 
   logout: () => {

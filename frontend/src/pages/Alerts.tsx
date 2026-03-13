@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Bell, Check, Filter, ShieldCheck, TriangleAlert } from 'lucide-react'
 import api from '../lib/api'
 import type { Alert } from '../lib/types'
 import { SEVERITY_COLORS, type SeverityLevel } from '../lib/types'
-import { Bell, Check, Clock, Filter } from 'lucide-react'
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -22,130 +22,213 @@ export default function Alerts() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
   const [showAcked, setShowAcked] = useState(false)
+  const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null)
+  const [error, setError] = useState('')
 
   useEffect(() => {
+    setLoading(true)
+    setError('')
+
     const params = new URLSearchParams({ limit: '50' })
     if (filter !== 'all') params.set('severity', filter)
-    if (!showAcked) params.set('acknowledged', 'false')
+    if (!showAcked) params.set('is_acknowledged', 'false')
 
-    api.get(`/alerts?${params}`).then(({ data }) => {
-      setAlerts(Array.isArray(data) ? data : data.items || [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    api
+      .get(`/alerts?${params}`)
+      .then(({ data }) => {
+        setAlerts(Array.isArray(data) ? data : data.items || [])
+        setLoading(false)
+      })
+      .catch(() => {
+        setError('Unable to load alerts right now.')
+        setLoading(false)
+      })
   }, [filter, showAcked])
 
   const acknowledge = async (alertId: string) => {
+    setAcknowledgingId(alertId)
+    setError('')
+
     try {
-      await api.post(`/alerts/${alertId}/acknowledge`)
-      setAlerts((prev) =>
-        prev.map((a) =>
-          a.id === alertId ? { ...a, is_acknowledged: true, acknowledged_at: new Date().toISOString() } : a
-        )
+      await api.patch(`/alerts/${alertId}/acknowledge`)
+      setAlerts((previous) =>
+        previous.map((alert) =>
+          alert.id === alertId
+            ? { ...alert, is_acknowledged: true, acknowledged_at: new Date().toISOString() }
+            : alert,
+        ),
       )
-    } catch { /* ignore */ }
+    } catch {
+      setError('Unable to acknowledge this alert.')
+    } finally {
+      setAcknowledgingId(null)
+    }
   }
+
+  const criticalCount = alerts.filter((alert) => alert.severity === 'critical').length
+  const highCount = alerts.filter((alert) => alert.severity === 'high').length
+  const pendingCount = alerts.filter((alert) => !alert.is_acknowledged).length
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Alerts</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            {alerts.length} alert{alerts.length !== 1 ? 's' : ''}
-          </p>
+    <div className="space-y-8">
+      <div className="max-w-3xl">
+        <p className="page-kicker">Alerts</p>
+        <h2 className="mt-3 page-title">Change review queue</h2>
+        <p className="mt-3 page-subtitle">
+          Triage meaningful changes, acknowledge what has been reviewed, and keep severity visible for recruiters or hiring managers scanning the product.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="metric-card">
+          <div className="text-sm font-medium text-slate-500">Pending review</div>
+          <div className="mt-3 text-4xl font-semibold text-slate-950">{pendingCount}</div>
+          <div className="mt-2 text-sm text-slate-600">Unacknowledged alerts still open</div>
+        </div>
+        <div className="metric-card">
+          <div className="text-sm font-medium text-slate-500">Critical alerts</div>
+          <div className="mt-3 text-4xl font-semibold text-slate-950">{criticalCount}</div>
+          <div className="mt-2 text-sm text-slate-600">Highest-priority items in the current view</div>
+        </div>
+        <div className="metric-card">
+          <div className="text-sm font-medium text-slate-500">High severity</div>
+          <div className="mt-3 text-4xl font-semibold text-slate-950">{highCount}</div>
+          <div className="mt-2 text-sm text-slate-600">Still meaningful, usually worth a same-day review</div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <div className="flex items-center gap-1 bg-white rounded-xl p-1 border border-gray-100">
-          {SEVERITIES.map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition capitalize ${
-                filter === s ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              {s}
-            </button>
-          ))}
+      <div className="panel p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            {SEVERITIES.map((severity) => (
+              <button
+                key={severity}
+                type="button"
+                onClick={() => setFilter(severity)}
+                className={`rounded-2xl px-4 py-2 text-sm font-semibold capitalize ${
+                  filter === severity
+                    ? 'bg-slate-950 text-white'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {severity}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAcked(!showAcked)}
+            className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold ${
+              showAcked
+                ? 'bg-blue-50 text-blue-700'
+                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <Filter className="h-4 w-4" />
+            {showAcked ? 'Showing acknowledged' : 'Hide acknowledged'}
+          </button>
         </div>
-        <button
-          onClick={() => setShowAcked(!showAcked)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition ${
-            showAcked ? 'bg-teal-50 border-teal-200 text-teal-700' : 'bg-white border-gray-100 text-gray-500'
-          }`}
-        >
-          <Filter className="w-3.5 h-3.5" />
-          {showAcked ? 'Showing all' : 'Hiding acknowledged'}
-        </button>
       </div>
 
-      {/* Alerts list */}
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
+
       {alerts.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
-          <Bell className="w-10 h-10 text-gray-200 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">No alerts</h2>
-          <p className="text-sm text-gray-400">
-            {filter !== 'all'
-              ? `No ${filter} alerts found. Try changing the filter.`
-              : 'Alerts will appear here when changes are detected.'}
-          </p>
+        <div className="panel px-6 py-14 text-center">
+          <Bell className="mx-auto h-10 w-10 text-slate-300" />
+          <div className="mt-4 text-lg font-semibold text-slate-950">No alerts in this view</div>
+          <div className="mt-2 text-sm text-slate-600">
+            Try adjusting the filters or wait for the next monitoring cycle to finish.
+          </div>
         </div>
       ) : (
-        <div className="space-y-2">
-          {alerts.map((alert) => (
-            <div
-              key={alert.id}
-              className={`bg-white rounded-2xl border border-gray-100 p-5 transition ${
-                alert.is_acknowledged ? 'opacity-60' : 'hover:shadow-md hover:shadow-gray-100'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <span className={`mt-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${SEVERITY_COLORS[alert.severity as SeverityLevel] || SEVERITY_COLORS.low}`}>
-                  {alert.severity.toUpperCase()}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-gray-900 mb-0.5">
-                    {alert.title || 'Change detected'}
-                  </div>
-                  <p className="text-sm text-gray-400 mb-2">{alert.summary}</p>
-                  <div className="flex items-center gap-3 text-xs text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {timeAgo(alert.created_at)}
-                    </span>
-                    {alert.category && (
-                      <span className="px-2 py-0.5 rounded-full bg-gray-50">{alert.category}</span>
-                    )}
+        <div className="panel overflow-hidden">
+          <div className="hidden grid-cols-[auto_1.4fr_0.8fr_0.7fr_0.8fr] gap-4 border-b border-slate-200 px-6 py-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 lg:grid">
+            <div>Severity</div>
+            <div>Alert</div>
+            <div>Category</div>
+            <div>Age</div>
+            <div className="text-right">Action</div>
+          </div>
+
+          <div className="divide-y divide-slate-200">
+            {alerts.map((alert) => (
+              <div
+                key={alert.id}
+                className={`grid gap-4 px-6 py-5 lg:grid-cols-[auto_1.4fr_0.8fr_0.7fr_0.8fr] lg:items-center ${
+                  alert.is_acknowledged ? 'bg-slate-50/60' : 'bg-white'
+                }`}
+              >
+                <div>
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      SEVERITY_COLORS[alert.severity as SeverityLevel] || SEVERITY_COLORS.low
+                    }`}
+                  >
+                    {alert.severity.toUpperCase()}
+                  </span>
+                </div>
+
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-sm font-semibold text-slate-950">
+                      {alert.title || 'Change detected'}
+                    </div>
                     {alert.is_acknowledged && (
-                      <span className="text-teal-600 flex items-center gap-1">
-                        <Check className="w-3 h-3" />
-                        Acknowledged
+                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                        Reviewed
                       </span>
                     )}
                   </div>
+                  <div className="mt-2 text-sm text-slate-600">{alert.summary}</div>
                 </div>
-                {!alert.is_acknowledged && (
-                  <button
-                    onClick={() => acknowledge(alert.id)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition border border-gray-100"
-                  >
-                    Acknowledge
-                  </button>
-                )}
+
+                <div className="text-sm text-slate-600">
+                  <div className="inline-flex items-center gap-2">
+                    {alert.severity === 'critical' ? (
+                      <TriangleAlert className="h-4 w-4 text-rose-600" />
+                    ) : (
+                      <ShieldCheck className="h-4 w-4 text-slate-400" />
+                    )}
+                    <span>{alert.category || 'Uncategorized'}</span>
+                  </div>
+                </div>
+
+                <div className="text-sm text-slate-600">{timeAgo(alert.created_at)}</div>
+
+                <div className="flex justify-end">
+                  {!alert.is_acknowledged ? (
+                    <button
+                      type="button"
+                      onClick={() => acknowledge(alert.id)}
+                      disabled={acknowledgingId === alert.id}
+                      className="btn-secondary"
+                    >
+                      <Check className="h-4 w-4" />
+                      {acknowledgingId === alert.id ? 'Saving...' : 'Acknowledge'}
+                    </button>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600">
+                      <Check className="h-4 w-4" />
+                      Acknowledged
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

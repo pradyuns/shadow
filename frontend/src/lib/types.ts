@@ -81,9 +81,11 @@ export interface NotificationSetting {
   user_id: string
   channel: 'slack' | 'email'
   is_enabled: boolean
-  config: Record<string, string>
   min_severity: string
+  slack_webhook_url: string | null
+  email_address: string | null
   digest_mode: boolean
+  digest_hour_utc: number | null
 }
 
 export type SeverityLevel = 'critical' | 'high' | 'medium' | 'low' | 'noise'

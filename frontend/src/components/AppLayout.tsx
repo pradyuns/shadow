@@ -1,22 +1,43 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
+import { useState } from 'react'
 import {
-  BarChart2,
   Bell,
-  Eye,
+  Globe,
+  LayoutDashboard,
   LogOut,
   Menu,
+  Radar,
   Settings,
-  Globe,
+  ShieldCheck,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
 
 const navItems = [
-  { to: '/', icon: BarChart2, label: 'Dashboard' },
-  { to: '/monitors', icon: Eye, label: 'Monitors' },
-  { to: '/alerts', icon: Bell, label: 'Alerts' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  {
+    to: '/dashboard',
+    icon: LayoutDashboard,
+    label: 'Overview',
+    detail: 'Activity, coverage, and recent changes',
+  },
+  {
+    to: '/monitors',
+    icon: Radar,
+    label: 'Monitors',
+    detail: 'URLs, cadence, and capture settings',
+  },
+  {
+    to: '/alerts',
+    icon: Bell,
+    label: 'Alerts',
+    detail: 'Severity triage and follow-up',
+  },
+  {
+    to: '/settings',
+    icon: Settings,
+    label: 'Settings',
+    detail: 'Profile, notifications, and delivery',
+  },
 ]
 
 export default function AppLayout() {
@@ -30,101 +51,147 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
-      {/* Mobile overlay */}
+    <div className="min-h-screen">
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+        <button
+          type="button"
+          aria-label="Close navigation"
+          className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-100 z-50 transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-800 bg-slate-950 text-slate-100 transition-transform duration-200 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-between px-6 h-16 border-b border-gray-50">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
-                <Globe className="w-4 h-4 text-white" />
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-3"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10">
+                <Globe className="h-5 w-5 text-blue-300" />
               </div>
-              <span className="text-lg font-semibold text-gray-900">Shadow</span>
+              <div>
+                <div className="text-lg font-semibold text-white">Shadow</div>
+                <div className="text-xs tracking-[0.18em] text-slate-400 uppercase">
+                  Monitoring Ops
+                </div>
+              </div>
             </Link>
             <button
+              type="button"
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-gray-400 hover:text-gray-600"
+              className="rounded-xl p-2 text-slate-400 hover:bg-white/5 hover:text-white lg:hidden"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Nav */}
-          <nav className="flex-1 px-3 py-4 space-y-1">
+          <div className="px-6 py-5">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Operational view</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">
+                    Review changes, confirm severity, and keep alerts auditable.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <nav className="flex-1 space-y-1 px-4">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.to === '/'}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                  `group flex items-start gap-3 rounded-2xl px-4 py-3 ${
                     isActive
-                      ? 'bg-gray-900 text-white'
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-white/10 text-white ring-1 ring-white/10'
+                      : 'text-slate-300 hover:bg-white/5 hover:text-white'
                   }`
                 }
               >
-                <item.icon className="w-4.5 h-4.5" />
-                {item.label}
+                <item.icon className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">{item.label}</div>
+                  <div className="mt-1 text-xs leading-5 text-slate-400 group-hover:text-slate-300">
+                    {item.detail}
+                  </div>
+                </div>
               </NavLink>
             ))}
           </nav>
 
-          {/* User section */}
-          <div className="p-4 border-t border-gray-50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-sm font-semibold">
-                {user?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-900 truncate">
-                  {user?.full_name || 'User'}
+          <div className="border-t border-white/10 p-4">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/15 text-sm font-semibold text-blue-200">
+                  {user?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </div>
-                <div className="text-xs text-gray-400 truncate">{user?.email}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-white">
+                    {user?.full_name || 'User'}
+                  </div>
+                  <div className="truncate text-xs text-slate-400">{user?.email}</div>
+                </div>
               </div>
-              <button
-                onClick={handleLogout}
-                className="p-1.5 text-gray-400 hover:text-gray-600 transition"
-                title="Sign out"
-              >
-                <LogOut className="w-4 h-4" />
+              <button type="button" onClick={handleLogout} className="btn-secondary mt-4 w-full">
+                <LogOut className="h-4 w-4" />
+                Sign out
               </button>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top bar (mobile) */}
-        <header className="sticky top-0 z-30 bg-[#FAFAF8]/80 backdrop-blur-sm border-b border-gray-100 lg:hidden">
-          <div className="flex items-center h-14 px-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 text-gray-500 hover:text-gray-900"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <span className="ml-3 text-sm font-semibold text-gray-900">Shadow</span>
+      <div className="lg:pl-72">
+        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 lg:px-8">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 shadow-sm lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div>
+                <p className="page-kicker">Competitive Intelligence</p>
+                <h1 className="text-sm font-semibold text-slate-950 sm:text-base">
+                  Shadow operating console
+                </h1>
+              </div>
+            </div>
+
+            <div className="hidden items-center gap-3 sm:flex">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-right">
+                <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                  Logged in
+                </div>
+                <div className="text-sm font-semibold text-slate-900">
+                  {user?.full_name || user?.email}
+                </div>
+              </div>
+              <Link to="/monitors/new" className="btn-primary">
+                <Radar className="h-4 w-4" />
+                New monitor
+              </Link>
+            </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="p-6 lg:p-8">
+        <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
           <Outlet />
         </main>
       </div>

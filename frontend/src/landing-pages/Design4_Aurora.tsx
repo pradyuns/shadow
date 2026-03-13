@@ -1,183 +1,272 @@
-/**
- * Design 4: "Aurora" — Warm, approachable, rounded, modern
- *
- * Personality: Friendly but professional, for product and growth teams
- * Colors: Warm neutrals, soft teal/amber accents, cream backgrounds
- * Layout: Card-heavy, rounded corners everywhere, inviting feel
- */
+import { ArrowRight, Bell, CheckCircle2, Clock3, GitCompare, Globe, Radar, ShieldCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
-import { ArrowRight, BarChart2, Bell, Eye, Filter, Globe, Layers, Sparkles } from 'lucide-react'
+const trustNotes = [
+  'Snapshot history stays attached to every monitor.',
+  'Alerts are severity-ranked before they reach the team.',
+  'Slack and email delivery can be configured per channel.',
+]
+
+const workflowSteps = [
+  {
+    title: 'Configure the sources that matter',
+    copy: 'Add a competitor URL, set the page type, and choose a review cadence that matches your market.',
+  },
+  {
+    title: 'Capture and compare snapshots',
+    copy: 'Shadow collects page content, stores a historical record, and computes diffs you can inspect later.',
+  },
+  {
+    title: 'Review only meaningful changes',
+    copy: 'Alerts are routed by severity so teams can triage urgent changes without losing the audit trail.',
+  },
+]
 
 export default function AuroraLanding() {
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-5 max-w-6xl mx-auto">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
-            <Globe className="w-4 h-4 text-white" />
+    <div className="min-h-screen">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-6 lg:px-8">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <Globe className="h-5 w-5 text-blue-600" />
           </div>
-          <span className="text-lg font-semibold text-gray-900">Shadow</span>
+          <div>
+            <div className="text-lg font-semibold text-slate-950">Shadow</div>
+            <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+              Competitor Monitoring
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-6">
-          <a href="#features" className="text-sm text-gray-400 hover:text-gray-700 transition">Features</a>
-          <a href="#how" className="text-sm text-gray-400 hover:text-gray-700 transition">How it Works</a>
-          <button className="text-sm px-5 py-2.5 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition font-medium">
-            Sign Up Free
-          </button>
+
+        <div className="hidden items-center gap-8 md:flex">
+          <a href="#workflow" className="text-sm font-medium text-slate-600 hover:text-slate-950">
+            Workflow
+          </a>
+          <a href="#trust" className="text-sm font-medium text-slate-600 hover:text-slate-950">
+            Why it works
+          </a>
+          <Link to="/login" className="text-sm font-semibold text-slate-700 hover:text-slate-950">
+            Sign in
+          </Link>
+          <Link to="/register" className="btn-primary">
+            Create account
+          </Link>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="max-w-6xl mx-auto px-8 pt-24 pb-16">
-        <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 text-teal-700 rounded-full text-sm font-medium mb-8">
-            <Sparkles className="w-4 h-4" />
-            Powered by AI classification
-          </div>
-
-          <h1 className="text-5xl sm:text-6xl font-bold leading-[1.1] tracking-tight text-gray-900">
-            Stay one step ahead of every competitor
-          </h1>
-
-          <p className="mt-6 text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Shadow watches the web pages that matter — pricing, features, hiring, messaging —
-            and tells you exactly what changed and why it matters.
-          </p>
-
-          <div className="mt-10 flex items-center justify-center gap-3">
-            <button className="px-7 py-3.5 bg-gray-900 text-white rounded-full font-semibold hover:bg-gray-800 transition text-sm flex items-center gap-2">
-              Start Monitoring
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button className="px-7 py-3.5 bg-white border border-gray-200 rounded-full text-gray-600 hover:border-gray-300 transition text-sm font-medium shadow-sm">
-              See How It Works
-            </button>
-          </div>
-        </div>
-
-        {/* Dashboard preview */}
-        <div className="mt-20 rounded-3xl bg-white border border-gray-200/80 shadow-xl shadow-gray-200/40 p-2 max-w-5xl mx-auto">
-          <div className="rounded-2xl bg-gray-50 p-8">
-            {/* Mini dashboard */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              {[
-                { label: 'Active Monitors', value: '24', trend: '+3 this week', color: 'text-teal-600' },
-                { label: 'Changes Detected', value: '156', trend: '12 today', color: 'text-amber-600' },
-                { label: 'Alerts Sent', value: '47', trend: '8 critical', color: 'text-rose-600' },
-              ].map((stat) => (
-                <div key={stat.label} className="bg-white rounded-2xl p-5 border border-gray-100">
-                  <div className="text-sm text-gray-400 mb-1">{stat.label}</div>
-                  <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                  <div className={`text-xs mt-1 ${stat.color}`}>{stat.trend}</div>
-                </div>
-              ))}
+      <section className="mx-auto max-w-7xl px-4 pb-20 pt-10 lg:px-8 lg:pt-16">
+        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+              <ShieldCheck className="h-4 w-4" />
+              Built for reviewable competitor monitoring
             </div>
 
-            {/* Recent alerts */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-900">Recent Alerts</span>
-                <span className="text-xs text-gray-400">View all →</span>
+            <h1 className="mt-8 max-w-3xl text-5xl font-semibold leading-[1.04] text-slate-950 sm:text-6xl">
+              Track competitor page changes without the noisy, over-designed demo feel.
+            </h1>
+
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+              Shadow gives teams a clean workflow for monitoring key pages, checking diffs, and
+              routing alerts with enough context to trust the output.
+            </p>
+
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+              <Link to="/register" className="btn-primary">
+                Start monitoring
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link to="/login" className="btn-secondary">
+                Open dashboard
+              </Link>
+            </div>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              <div className="metric-card">
+                <div className="text-sm font-medium text-slate-500">Coverage</div>
+                <div className="mt-3 text-3xl font-semibold text-slate-950">24</div>
+                <div className="mt-1 text-sm text-slate-600">Active monitors across pricing, hiring, and changelog pages</div>
               </div>
-              {[
-                { severity: 'Critical', color: 'bg-rose-100 text-rose-700', name: 'Stripe', change: 'New usage-based pricing model announced', time: '5m ago' },
-                { severity: 'High', color: 'bg-amber-100 text-amber-700', name: 'Linear', change: 'Launched new project management feature', time: '2h ago' },
-                { severity: 'Medium', color: 'bg-teal-100 text-teal-700', name: 'Notion', change: 'Added 15 new AI-related job openings', time: '4h ago' },
-              ].map((alert, i) => (
-                <div key={i} className="px-5 py-3.5 flex items-center gap-3 hover:bg-gray-50/50 transition border-t border-gray-50 first:border-t-0">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${alert.color}`}>{alert.severity}</span>
-                  <span className="text-sm font-medium text-gray-900 w-20">{alert.name}</span>
-                  <span className="text-sm text-gray-500 flex-1">{alert.change}</span>
-                  <span className="text-xs text-gray-300">{alert.time}</span>
+              <div className="metric-card">
+                <div className="text-sm font-medium text-slate-500">Review queue</div>
+                <div className="mt-3 text-3xl font-semibold text-slate-950">8</div>
+                <div className="mt-1 text-sm text-slate-600">Open alerts with clear severity ranking and timestamps</div>
+              </div>
+              <div className="metric-card">
+                <div className="text-sm font-medium text-slate-500">Change history</div>
+                <div className="mt-3 text-3xl font-semibold text-slate-950">100%</div>
+                <div className="mt-1 text-sm text-slate-600">Snapshots and diffs remain inspectable for every monitored page</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel p-4 sm:p-6">
+            <div className="rounded-[28px] border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div>
+                  <div className="text-sm font-semibold text-slate-950">Monitoring workflow</div>
+                  <div className="mt-1 text-sm text-slate-600">
+                    A calmer product frame that reads like software, not a landing page generator.
+                  </div>
                 </div>
-              ))}
+                <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  Operational
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white">
+                        <Radar className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-950">Monitor configuration</div>
+                        <div className="text-xs text-slate-500">Pricing pages, changelogs, docs, and hiring pages</div>
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold text-slate-950">24 active</div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                      <GitCompare className="h-4 w-4 text-blue-600" />
+                      Latest diff
+                    </div>
+                    <div className="mt-3 text-sm leading-6 text-slate-600">
+                      Stripe pricing updated usage-based packaging and added a new annual billing note.
+                    </div>
+                    <div className="mt-4 flex items-center gap-3 text-xs text-slate-500">
+                      <Clock3 className="h-3.5 w-3.5" />
+                      5 minutes ago
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                      <Bell className="h-4 w-4 text-amber-600" />
+                      Triage queue
+                    </div>
+                    <div className="mt-3 space-y-3 text-sm text-slate-600">
+                      <div className="flex items-center justify-between">
+                        <span>Critical alerts</span>
+                        <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">2</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Awaiting acknowledgement</span>
+                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">8</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Delivery configured</span>
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Slack + Email</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-950">Why recruiters can read this quickly</div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    {trustNotes.map((note) => (
+                      <div key={note} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                          <span>{note}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="max-w-6xl mx-auto px-8 py-24">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-gray-900">Built for competitive teams</h2>
-          <p className="mt-3 text-gray-400 max-w-md mx-auto">
-            Every feature designed to turn competitor activity into strategic advantage.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[
-            { icon: Eye, title: 'Page Monitoring', desc: 'Track any public URL. Pricing pages, changelogs, job boards, homepages, docs — if it has a URL, we can watch it.', color: 'bg-teal-100 text-teal-700' },
-            { icon: Filter, title: 'Noise Filtering', desc: 'Timestamps, session tokens, build hashes, ad IDs — stripped automatically so only real changes surface.', color: 'bg-amber-100 text-amber-700' },
-            { icon: Sparkles, title: 'AI Classification', desc: 'Each change is classified as critical, high, medium, low, or noise — with a human-readable summary.', color: 'bg-violet-100 text-violet-700' },
-            { icon: Bell, title: 'Smart Alerts', desc: 'Slack and email with severity routing. Digest mode bundles low-priority changes into a daily summary.', color: 'bg-rose-100 text-rose-700' },
-            { icon: Layers, title: 'Full History', desc: 'Every snapshot, diff, and classification stored. Drill into any change and see what evolved over time.', color: 'bg-blue-100 text-blue-700' },
-            { icon: BarChart2, title: 'Cost Control', desc: 'Noise filtering saves 80% of AI costs. Rate limits and circuit breakers keep your spend predictable.', color: 'bg-emerald-100 text-emerald-700' },
-          ].map((f) => (
-            <div key={f.title} className="bg-white rounded-2xl p-6 border border-gray-100 hover:shadow-lg hover:shadow-gray-200/40 transition">
-              <div className={`w-10 h-10 rounded-xl ${f.color} flex items-center justify-center mb-4`}>
-                <f.icon className="w-5 h-5" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how" className="bg-white py-24">
-        <div className="max-w-6xl mx-auto px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">Simple setup, powerful results</h2>
+      <section id="workflow" className="border-y border-slate-200/80 bg-white/80 py-20">
+        <div className="mx-auto max-w-7xl px-4 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="page-kicker">Workflow</p>
+            <h2 className="mt-3 text-4xl font-semibold text-slate-950">
+              The product flow is straightforward by design.
+            </h2>
+            <p className="mt-4 text-lg leading-8 text-slate-600">
+              Configure sources, let the system capture changes, and review alerts with enough context
+              to decide what matters.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
-            <div className="hidden md:block absolute top-8 left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-teal-200 via-amber-200 to-rose-200" />
-            {[
-              { num: 1, title: 'Add URLs', desc: 'Paste competitor page URLs and configure check intervals.', emoji: '🔗' },
-              { num: 2, title: 'Auto-scrape', desc: 'We fetch and extract text content on your schedule.', emoji: '🔄' },
-              { num: 3, title: 'AI analyzes', desc: 'Changes are diffed, filtered, and classified by severity.', emoji: '🧠' },
-              { num: 4, title: 'Get alerted', desc: 'Critical changes hit Slack instantly. Digest the rest daily.', emoji: '🔔' },
-            ].map((step) => (
-              <div key={step.num} className="text-center relative z-10">
-                <div className="w-16 h-16 rounded-2xl bg-[#FAFAF8] border border-gray-100 flex items-center justify-center text-2xl mx-auto mb-4 shadow-sm">
-                  {step.emoji}
+          <div className="mt-12 grid gap-5 lg:grid-cols-3">
+            {workflowSteps.map((step, index) => (
+              <div key={step.title} className="panel p-6">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-sm font-semibold text-white">
+                  {index + 1}
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-1">{step.title}</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">{step.desc}</p>
+                <h3 className="mt-5 text-xl font-semibold text-slate-950">{step.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{step.copy}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="max-w-6xl mx-auto px-8 py-24">
-        <div className="rounded-3xl bg-gray-900 p-16 text-center relative overflow-hidden">
-          <div className="absolute inset-0 opacity-20" style={{
-            backgroundImage: `radial-gradient(circle at 30% 50%, rgba(20, 184, 166, 0.3), transparent 50%), radial-gradient(circle at 70% 50%, rgba(245, 158, 11, 0.3), transparent 50%)`,
-          }} />
-          <div className="relative z-10">
-            <h2 className="text-3xl font-bold text-white mb-4">Ready to see what you've been missing?</h2>
-            <p className="text-gray-400 mb-8 max-w-md mx-auto">
-              Start monitoring competitors in minutes. Free to get started, no credit card needed.
-            </p>
-            <button className="px-8 py-3.5 bg-white text-gray-900 rounded-full font-semibold hover:bg-gray-100 transition">
-              Create Free Account
-            </button>
+      <section id="trust" className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+          <div>
+            <p className="page-kicker">Why it works</p>
+            <h2 className="mt-3 text-4xl font-semibold text-slate-950">
+              A product frame that feels closer to a real operating tool.
+            </h2>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="panel-muted p-6">
+              <div className="text-sm font-semibold text-slate-950">Structured pages</div>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Headers, summaries, and status blocks are organized like internal SaaS software rather than a design exercise.
+              </p>
+            </div>
+            <div className="panel-muted p-6">
+              <div className="text-sm font-semibold text-slate-950">Actionable alerts</div>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Severity, timestamps, and acknowledgement state stay visible so changes can be triaged quickly.
+              </p>
+            </div>
+            <div className="panel-muted p-6">
+              <div className="text-sm font-semibold text-slate-950">Audit-ready history</div>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Snapshots and diffs live with the monitor, which makes recruiter demos easier to explain and inspect.
+              </p>
+            </div>
+            <div className="panel-muted p-6">
+              <div className="text-sm font-semibold text-slate-950">Delivery controls</div>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Notification settings can be configured by channel with severity thresholds and optional digest delivery.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="panel mt-12 flex flex-col items-start justify-between gap-6 p-8 lg:flex-row lg:items-center">
+          <div>
+            <div className="text-2xl font-semibold text-slate-950">Ready to review the product in context?</div>
+            <div className="mt-2 text-sm leading-7 text-slate-600">
+              Open the app, create a monitor, and walk through the alert and snapshot flow directly.
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link to="/register" className="btn-primary">
+              Create account
+            </Link>
+            <Link to="/login" className="btn-secondary">
+              Sign in
+            </Link>
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-100 py-8">
-        <div className="max-w-6xl mx-auto px-8 flex items-center justify-between text-sm text-gray-300">
-          <span>Shadow — Competitor Intelligence Monitor</span>
-          <span>v0.1.0</span>
-        </div>
-      </footer>
     </div>
   )
 }

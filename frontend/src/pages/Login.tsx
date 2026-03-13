@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { ArrowRight, Bell, GitCompare, Globe, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { Globe } from 'lucide-react'
+import { extractApiErrorMessage } from '../lib/api'
+
+const highlights = [
+  'Review alerts by severity instead of reading raw page diffs.',
+  'Keep snapshot history attached to every monitored URL.',
+  'Show a recruiter a product flow that looks deliberate and inspectable.',
+]
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -15,82 +22,140 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setLoading(true)
+
     try {
       await login(email, password)
-      navigate('/')
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid credentials')
+      navigate('/dashboard')
+    } catch (error: unknown) {
+      setError(extractApiErrorMessage(error, 'Invalid credentials'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-10">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
-            <Globe className="w-5 h-5 text-white" />
+    <div className="min-h-screen">
+      <div className="mx-auto grid min-h-screen max-w-7xl items-center gap-10 px-4 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
+        <section className="hidden lg:block">
+          <div className="max-w-xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+              <ShieldCheck className="h-4 w-4" />
+              Competitive monitoring workspace
+            </div>
+
+            <h1 className="mt-8 text-5xl font-semibold leading-[1.08] text-slate-950">
+              Sign in to a product flow that reads like an operations tool.
+            </h1>
+
+            <p className="mt-6 text-lg leading-8 text-slate-600">
+              Review monitors, snapshots, diffs, and alerts from a cleaner interface that feels closer to
+              production software than a generated mockup.
+            </p>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-2">
+              <div className="metric-card">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                  <GitCompare className="h-4 w-4 text-blue-600" />
+                  Diff review
+                </div>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  Snapshots and change history stay inspectable directly from the monitor detail page.
+                </p>
+              </div>
+              <div className="metric-card">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                  <Bell className="h-4 w-4 text-amber-600" />
+                  Alert triage
+                </div>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  Acknowledge high-signal alerts without leaving the dashboard workflow.
+                </p>
+              </div>
+            </div>
+
+            <div className="panel mt-8 p-6">
+              <div className="text-sm font-semibold text-slate-950">What changes in this pass</div>
+              <div className="mt-4 space-y-3">
+                {highlights.map((item) => (
+                  <div key={item} className="flex items-start gap-3 text-sm leading-7 text-slate-600">
+                    <div className="mt-2 h-2 w-2 rounded-full bg-blue-600" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <span className="text-xl font-semibold text-gray-900">Shadow</span>
-        </div>
+        </section>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
-          <h1 className="text-xl font-bold text-gray-900 mb-1">Welcome back</h1>
-          <p className="text-sm text-gray-400 mb-6">Sign in to your account</p>
+        <section className="mx-auto w-full max-w-md">
+          <div className="mb-6">
+            <Link to="/" className="inline-flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <Globe className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-slate-950">Shadow</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                  Monitoring Ops
+                </div>
+              </div>
+            </Link>
+          </div>
 
-          {error && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-50 text-rose-700 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="panel p-8">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-[#FAFAF8] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition"
-                placeholder="you@company.com"
-                required
-              />
+              <p className="page-kicker">Sign In</p>
+              <h2 className="mt-3 text-3xl font-semibold text-slate-950">Welcome back</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Use your account to review active monitors, recent diffs, and unresolved alerts.
+              </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-[#FAFAF8] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition"
-                placeholder="Enter your password"
-                required
-              />
-            </div>
+            {error && (
+              <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {error}
+              </div>
+            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-gray-900 text-white rounded-full text-sm font-semibold hover:bg-gray-800 transition disabled:opacity-50"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
-        </div>
+            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-field"
+                  placeholder="you@company.com"
+                  required
+                />
+              </div>
 
-        <p className="text-center text-sm text-gray-400 mt-6">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-teal-600 hover:text-teal-700 font-medium">
-            Sign up
-          </Link>
-        </p>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field"
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+
+              <button type="submit" disabled={loading} className="btn-primary w-full">
+                {loading ? 'Signing in...' : 'Sign in'}
+                {!loading && <ArrowRight className="h-4 w-4" />}
+              </button>
+            </form>
+          </div>
+
+          <p className="mt-6 text-center text-sm text-slate-600">
+            Don&apos;t have an account?{' '}
+            <Link to="/register" className="font-semibold text-blue-700 hover:text-blue-800">
+              Create one
+            </Link>
+          </p>
+        </section>
       </div>
     </div>
   )

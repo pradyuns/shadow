@@ -6,7 +6,7 @@
  * Layout: Centered, breathing whitespace, clear visual hierarchy
  */
 
-import { ArrowRight, BarChart3, Bell, Eye, GitCompare, Search, Shield } from 'lucide-react'
+import { ArrowRight, BarChart3, Bell, Eye, GitCompare, Search } from 'lucide-react'
 
 const features = [
   { icon: Search, title: 'Monitor Any Page', desc: 'Pricing, changelogs, job boards, homepages — track the pages that matter to your strategy.' },

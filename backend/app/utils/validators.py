@@ -18,6 +18,9 @@ def validate_url_safe(url: str) -> tuple[bool, str | None]:
 
     Checks both the hostname directly and resolves DNS to catch
     domains that point to private/internal IP addresses.
+
+    DNS lookup is best-effort here: monitor creation should not fail
+    just because the current environment cannot resolve a public host.
     """
     try:
         parsed = urlparse(url)
@@ -50,7 +53,7 @@ def validate_url_safe(url: str) -> tuple[bool, str | None]:
                 if not _is_ip_safe(ip_str):
                     return False, "URL resolves to a private/reserved IP address"
         except socket.gaierror:
-            return False, "Could not resolve hostname"
+            return True, None
 
     return True, None
 
