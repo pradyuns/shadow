@@ -30,37 +30,35 @@ export interface Alert {
   diff_id: string
   analysis_id: string
   severity: 'critical' | 'high' | 'medium' | 'low' | 'noise'
-  category: string
-  title: string
   summary: string
+  categories: string[]
   is_acknowledged: boolean
   acknowledged_at: string | null
-  notification_status: string
+  notified_at: string | null
   created_at: string
   monitor?: Monitor
 }
 
 export interface Snapshot {
-  _id: string
+  id: string
   monitor_id: string
-  content_hash: string
-  text_content: string
-  raw_html_length: number
-  fetched_at: string
-  scraper_type: string
-  status_code: number
+  url: string
+  http_status: number | null
+  render_method: string | null
+  text_hash: string | null
+  fetch_duration_ms: number | null
+  status: string | null
+  is_baseline: boolean
+  created_at: string
 }
 
 export interface Diff {
-  _id: string
+  id: string
   monitor_id: string
-  snapshot_before_id: string
-  snapshot_after_id: string
-  unified_diff: string
-  lines_added: number
-  lines_removed: number
-  hunks_count: number
-  is_noise_only: boolean
+  diff_lines_added: number
+  diff_lines_removed: number
+  is_empty_after_filter: boolean
+  noise_lines_removed: number
   created_at: string
 }
 
@@ -104,4 +102,19 @@ export const SEVERITY_DOT: Record<SeverityLevel, string> = {
   medium: 'bg-teal-500',
   low: 'bg-blue-500',
   noise: 'bg-gray-400',
+}
+
+function toTitleCase(value: string) {
+  return value
+    .split('_')
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ')
+}
+
+export function primaryAlertCategory(alert: Pick<Alert, 'categories'>) {
+  return alert.categories[0] ? toTitleCase(alert.categories[0]) : 'Uncategorized'
+}
+
+export function alertTitle(alert: Pick<Alert, 'categories'>) {
+  return alert.categories[0] ? `${toTitleCase(alert.categories[0])} change` : 'Change detected'
 }

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import api from '../lib/api'
 import type { Alert, Monitor } from '../lib/types'
-import { SEVERITY_COLORS, type SeverityLevel } from '../lib/types'
+import { SEVERITY_COLORS, alertTitle, type SeverityLevel } from '../lib/types'
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -42,7 +42,7 @@ export default function Dashboard() {
   useEffect(() => {
     Promise.all([
       api.get('/monitors').catch(() => ({ data: [] })),
-      api.get('/alerts?limit=10').catch(() => ({ data: [] })),
+      api.get('/alerts?per_page=10').catch(() => ({ data: [] })),
     ]).then(([m, a]) => {
       setMonitors(Array.isArray(m.data) ? m.data : m.data.items || [])
       setAlerts(Array.isArray(a.data) ? a.data : a.data.items || [])
@@ -180,7 +180,7 @@ export default function Dashboard() {
 
                   <div>
                     <div className="text-sm font-semibold text-slate-950">
-                      {alert.title || 'Change detected'}
+                      {alertTitle(alert)}
                     </div>
                     <div className="mt-1 text-sm text-slate-600">{alert.summary}</div>
                   </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bell, Check, Filter, ShieldCheck, TriangleAlert } from 'lucide-react'
 import api from '../lib/api'
 import type { Alert } from '../lib/types'
-import { SEVERITY_COLORS, type SeverityLevel } from '../lib/types'
+import { SEVERITY_COLORS, alertTitle, primaryAlertCategory, type SeverityLevel } from '../lib/types'
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -29,7 +29,7 @@ export default function Alerts() {
     setLoading(true)
     setError('')
 
-    const params = new URLSearchParams({ limit: '50' })
+    const params = new URLSearchParams({ per_page: '50' })
     if (filter !== 'all') params.set('severity', filter)
     if (!showAcked) params.set('is_acknowledged', 'false')
 
@@ -184,7 +184,7 @@ export default function Alerts() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-sm font-semibold text-slate-950">
-                      {alert.title || 'Change detected'}
+                      {alertTitle(alert)}
                     </div>
                     {alert.is_acknowledged && (
                       <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
@@ -202,7 +202,7 @@ export default function Alerts() {
                     ) : (
                       <ShieldCheck className="h-4 w-4 text-slate-400" />
                     )}
-                    <span>{alert.category || 'Uncategorized'}</span>
+                    <span>{primaryAlertCategory(alert)}</span>
                   </div>
                 </div>
 

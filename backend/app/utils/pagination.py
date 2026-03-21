@@ -8,10 +8,11 @@ class PaginationParams:
         self,
         page: int = Query(1, ge=1, description="Page number"),
         per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+        limit: int | None = Query(None, ge=1, le=100, description="Alias for per_page"),
     ):
         self.page = page
-        self.per_page = per_page
-        self.offset = (page - 1) * per_page
+        self.per_page = limit if limit is not None else per_page
+        self.offset = (page - 1) * self.per_page
 
     def paginate(self, items: list, total: int) -> dict:
         return {

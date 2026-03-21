@@ -16,16 +16,16 @@ import {
 } from 'lucide-react'
 import api from '../lib/api'
 import type { Alert, Diff, Monitor, Snapshot } from '../lib/types'
-import { SEVERITY_COLORS, type SeverityLevel } from '../lib/types'
+import { SEVERITY_COLORS, alertTitle, type SeverityLevel } from '../lib/types'
 
 type Tab = 'alerts' | 'snapshots' | 'diffs'
 
 async function fetchMonitorDetail(id: string) {
   const [monitorResponse, alertResponse, snapshotResponse, diffResponse] = await Promise.all([
     api.get(`/monitors/${id}`).catch(() => ({ data: null })),
-    api.get(`/alerts?monitor_id=${id}&limit=20`).catch(() => ({ data: [] })),
-    api.get(`/monitors/${id}/snapshots?limit=10`).catch(() => ({ data: [] })),
-    api.get(`/monitors/${id}/diffs?limit=10`).catch(() => ({ data: [] })),
+    api.get(`/alerts?monitor_id=${id}&per_page=20`).catch(() => ({ data: [] })),
+    api.get(`/monitors/${id}/snapshots?per_page=10`).catch(() => ({ data: [] })),
+    api.get(`/monitors/${id}/diffs?per_page=10`).catch(() => ({ data: [] })),
   ])
 
   return {
@@ -389,7 +389,7 @@ export default function MonitorDetail() {
                         </div>
                         <div>
                           <div className="text-sm font-semibold text-slate-950">
-                            {alert.title || 'Change detected'}
+                            {alertTitle(alert)}
                           </div>
                           <div className="mt-1 text-sm text-slate-600">{alert.summary}</div>
                         </div>
@@ -419,23 +419,23 @@ export default function MonitorDetail() {
                 ) : (
                   <div className="divide-y divide-slate-200">
                     {snapshots.map((snapshot) => (
-                      <div key={snapshot._id} className="grid gap-4 px-6 py-4 lg:grid-cols-[1fr_auto]">
+                      <div key={snapshot.id} className="grid gap-4 px-6 py-4 lg:grid-cols-[1fr_auto]">
                         <div>
                           <div className="text-sm font-semibold text-slate-950">
-                            Snapshot {snapshot._id.slice(-8)}
+                            Snapshot {snapshot.id.slice(-8)}
                           </div>
                           <div className="mt-1 text-sm text-slate-600">
-                            {snapshot.scraper_type} · HTTP {snapshot.status_code} ·{' '}
-                            {Math.round(snapshot.raw_html_length / 1024)} KB raw HTML
+                            {snapshot.render_method || 'Unknown render method'} · HTTP {snapshot.http_status ?? 'n/a'} ·{' '}
+                            {snapshot.fetch_duration_ms ? `${snapshot.fetch_duration_ms} ms` : 'timing unavailable'}
                           </div>
                           <div className="mt-2 font-mono text-xs text-slate-500">
-                            {snapshot.content_hash}
+                            {snapshot.text_hash || 'No text hash recorded'}
                           </div>
                         </div>
                         <div className="text-right text-xs text-slate-500">
                           <div className="inline-flex items-center gap-1">
                             <Clock3 className="h-3.5 w-3.5" />
-                            {timeAgo(snapshot.fetched_at)}
+                            {timeAgo(snapshot.created_at)}
                           </div>
                         </div>
                       </div>
@@ -458,21 +458,22 @@ export default function MonitorDetail() {
                 ) : (
                   <div className="divide-y divide-slate-200">
                     {diffs.map((diff) => (
-                      <div key={diff._id} className="grid gap-4 px-6 py-4 lg:grid-cols-[1fr_auto]">
+                      <div key={diff.id} className="grid gap-4 px-6 py-4 lg:grid-cols-[1fr_auto]">
                         <div>
                           <div className="flex flex-wrap items-center gap-3">
                             <div className="text-sm font-semibold text-slate-950">
-                              {diff.hunks_count} {diff.hunks_count === 1 ? 'hunk' : 'hunks'}
+                              {diff.is_empty_after_filter ? 'Noise-only diff' : 'Meaningful diff'}
                             </div>
-                            {diff.is_noise_only && (
+                            {diff.is_empty_after_filter && (
                               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
                                 Noise only
                               </span>
                             )}
                           </div>
                           <div className="mt-2 flex flex-wrap gap-3 text-sm text-slate-600">
-                            <span className="text-emerald-700">+{diff.lines_added} lines added</span>
-                            <span className="text-rose-700">-{diff.lines_removed} lines removed</span>
+                            <span className="text-emerald-700">+{diff.diff_lines_added} lines added</span>
+                            <span className="text-rose-700">-{diff.diff_lines_removed} lines removed</span>
+                            <span>{diff.noise_lines_removed} noise lines filtered</span>
                           </div>
                         </div>
                         <div className="text-right text-xs text-slate-500">

@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     slack_webhook_url: str = ""
 
     # Email verification
-    frontend_url: str = "http://localhost:5173"
+    frontend_url: str = "http://localhost:3000"
     email_verification_token_expire_hours: int = 24
 
     # CORS
