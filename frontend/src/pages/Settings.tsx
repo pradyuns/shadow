@@ -13,6 +13,7 @@ type NotificationDraft = {
   min_severity: NotificationSeverity
   slack_webhook_url: string
   email_address: string
+  is_configured: boolean
   digest_mode: boolean
   digest_hour_utc: number | null
 }
@@ -47,6 +48,7 @@ function buildDefaultDrafts(userEmail: string): Record<Channel, NotificationDraf
       min_severity: 'high',
       slack_webhook_url: '',
       email_address: '',
+      is_configured: false,
       digest_mode: false,
       digest_hour_utc: 16,
     },
@@ -56,6 +58,7 @@ function buildDefaultDrafts(userEmail: string): Record<Channel, NotificationDraf
       min_severity: 'medium',
       slack_webhook_url: '',
       email_address: userEmail,
+      is_configured: Boolean(userEmail),
       digest_mode: false,
       digest_hour_utc: 16,
     },
@@ -73,8 +76,9 @@ function normalizeDrafts(
       channel: setting.channel,
       is_enabled: setting.is_enabled,
       min_severity: setting.min_severity as NotificationSeverity,
-      slack_webhook_url: setting.slack_webhook_url || '',
-      email_address: setting.email_address || '',
+      slack_webhook_url: '',
+      email_address: setting.email_address || userEmail,
+      is_configured: setting.channel === 'slack' ? setting.slack_configured : Boolean(setting.email_address || userEmail),
       digest_mode: setting.digest_mode,
       digest_hour_utc: setting.digest_hour_utc ?? 16,
     }
@@ -154,12 +158,28 @@ export default function Settings() {
       await api.put(`/notifications/settings/${channel}`, {
         is_enabled: draft.is_enabled,
         min_severity: draft.min_severity,
-        slack_webhook_url: channel === 'slack' ? draft.slack_webhook_url || null : null,
-        email_address: channel === 'email' ? draft.email_address || null : null,
+        slack_webhook_url: channel === 'slack' ? draft.slack_webhook_url.trim() || null : null,
+        email_address:
+          channel === 'email'
+            ? (draft.email_address.trim() || null) === (user?.email || '')
+              ? null
+              : draft.email_address.trim() || null
+            : null,
         digest_mode: draft.digest_mode,
         digest_hour_utc: draft.digest_mode ? draft.digest_hour_utc : null,
       })
 
+      setDrafts((previous) => ({
+        ...previous,
+        [channel]: {
+          ...previous[channel],
+          slack_webhook_url: channel === 'slack' ? '' : previous[channel].slack_webhook_url,
+          is_configured:
+            channel === 'slack'
+              ? previous[channel].is_configured || Boolean(draft.slack_webhook_url.trim())
+              : Boolean(draft.email_address.trim() || user?.email),
+        },
+      }))
       setChannelMessage((previous) => ({ ...previous, [channel]: 'Settings saved.' }))
     } catch (error: unknown) {
       setChannelMessage((previous) => ({
@@ -347,6 +367,16 @@ export default function Settings() {
                           className="input-field"
                           placeholder={metadata.placeholder}
                         />
+                        {channel === 'slack' && draft.is_configured && !draft.slack_webhook_url && (
+                          <p className="mt-2 text-xs text-slate-500">
+                            A webhook is already saved on the server. Enter a new one only if you want to replace it.
+                          </p>
+                        )}
+                        {channel === 'email' && (
+                          <p className="mt-2 text-xs text-slate-500">
+                            Leave this as your verified account email, or replace it with a delivery inbox.
+                          </p>
+                        )}
                       </div>
 
                       <div>

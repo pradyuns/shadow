@@ -5,7 +5,7 @@ from app.api.deps import get_current_user, require_verified_user
 from app.db.postgres import get_db
 from app.models.user import User
 from app.schemas.notification import Channel, NotificationSettingRead, NotificationSettingUpdate
-from app.services.notification_service import get_user_settings, upsert_setting
+from app.services.notification_service import get_user_settings, serialize_setting, upsert_setting
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -16,7 +16,7 @@ async def list_settings(
     db: AsyncSession = Depends(get_db),
 ):
     settings = await get_user_settings(db, user.id)
-    return settings
+    return [serialize_setting(setting) for setting in settings]
 
 
 @router.put("/settings/{channel}", response_model=NotificationSettingRead)
@@ -26,8 +26,11 @@ async def update_setting(
     user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
 ):
-    setting = await upsert_setting(db, user.id, channel.value, body.model_dump())
-    return setting
+    try:
+        setting = await upsert_setting(db, user.id, channel.value, body.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return serialize_setting(setting)
 
 
 @router.post("/test/{channel}", status_code=status.HTTP_202_ACCEPTED)

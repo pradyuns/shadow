@@ -81,6 +81,7 @@ export interface NotificationSetting {
   is_enabled: boolean
   min_severity: string
   slack_webhook_url: string | null
+  slack_configured: boolean
   email_address: string | null
   digest_mode: boolean
   digest_hour_utc: number | null

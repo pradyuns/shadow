@@ -33,6 +33,7 @@ class NotificationSettingRead(BaseModel):
     is_enabled: bool
     min_severity: str
     slack_webhook_url: str | None
+    slack_configured: bool = False
     email_address: str | None
     digest_mode: bool
     digest_hour_utc: int | None

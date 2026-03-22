@@ -42,6 +42,7 @@ def send_notifications(self, alert_id: str) -> dict:
     from app.models.alert import Alert
     from app.models.monitor import Monitor
     from app.models.notification_setting import NotificationSetting
+    from app.models.user import User
 
     db = get_sync_db()
 
@@ -62,6 +63,11 @@ def send_notifications(self, alert_id: str) -> dict:
         if not monitor:
             logger.error("notify_monitor_not_found", monitor_id=str(alert.monitor_id))
             return {"error": "monitor_not_found"}
+
+        user = db.execute(select(User).where(User.id == alert.user_id)).scalar_one_or_none()
+        if not user:
+            logger.error("notify_user_not_found", user_id=str(alert.user_id))
+            return {"error": "user_not_found"}
 
         # Load user notification settings
         settings_result = db.execute(select(NotificationSetting).where(NotificationSetting.user_id == alert.user_id))
@@ -126,7 +132,7 @@ def send_notifications(self, alert_id: str) -> dict:
                 notifier = get_notifier(setting.channel)
                 channel_config = {
                     "slack_webhook_url": setting.slack_webhook_url,
-                    "email_address": setting.email_address,
+                    "email_address": setting.email_address or user.email,
                 }
                 notifier.send(payload, **channel_config)
 
@@ -277,6 +283,7 @@ def send_test_notification(user_id: str, channel: str) -> dict:
     """Send a test notification to verify channel configuration."""
     from app.db.postgres_sync import get_sync_db
     from app.models.notification_setting import NotificationSetting
+    from app.models.user import User
 
     db = get_sync_db()
     try:
@@ -290,10 +297,14 @@ def send_test_notification(user_id: str, channel: str) -> dict:
         if not setting:
             return {"user_id": user_id, "channel": channel, "sent": False, "error": "no_setting"}
 
+        user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+        if not user:
+            return {"user_id": user_id, "channel": channel, "sent": False, "error": "user_not_found"}
+
         notifier = get_notifier(channel)
         notifier.send_test(
             slack_webhook_url=setting.slack_webhook_url,
-            email_address=setting.email_address,
+            email_address=setting.email_address or user.email,
         )
 
         logger.info("test_notification_sent", user_id=user_id, channel=channel)
