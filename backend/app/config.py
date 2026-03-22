@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 30
     jwt_refresh_token_expire_days: int = 7
     jwt_algorithm: str = "HS256"
+    auth_access_cookie_name: str = "shadow_access_token"
+    auth_refresh_cookie_name: str = "shadow_refresh_token"
+    auth_cookie_secure: bool = False
+    auth_cookie_samesite: str = "lax"
+    auth_cookie_domain: str | None = None
 
     # Anthropic
     anthropic_api_key: str = ""

@@ -49,8 +49,8 @@ export default function AppLayout() {
   const [resending, setResending] = useState(false)
   const [resendMessage, setResendMessage] = useState('')
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/login')
   }
 
