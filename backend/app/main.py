@@ -35,8 +35,8 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.enable_docs else None,
+    redoc_url="/redoc" if settings.enable_docs else None,
 )
 
 app.add_middleware(
@@ -53,12 +53,14 @@ register_error_handlers(app)
 app.include_router(api_router)
 
 
-@app.get("/metrics")
-async def metrics():
-    from prometheus_client import generate_latest
-    from starlette.responses import Response
+if settings.enable_metrics:
 
-    return Response(content=generate_latest(), media_type="text/plain; charset=utf-8")
+    @app.get("/metrics")
+    async def metrics():
+        from prometheus_client import generate_latest
+        from starlette.responses import Response
+
+        return Response(content=generate_latest(), media_type="text/plain; charset=utf-8")
 
 
 @app.get("/api/v1/health")

@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     log_level: str = "info"
     log_format: str = "console"  # "json" for production, "console" for development
+    enable_docs: bool = True
+    enable_metrics: bool = True
 
     # PostgreSQL
     database_url: str = "postgresql+asyncpg://compmon:changeme@postgres:5432/compmon"
