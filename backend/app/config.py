@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # Anthropic
     anthropic_api_key: str = ""
-    claude_model: str = "claude-sonnet-4-5-20241022"
+    claude_model: str = "claude-sonnet-4-20250514"
     claude_max_tokens_budget: int = 4000
     claude_rate_limit_per_minute: int = 20
 
