@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, Bell, CheckCircle2, GitCompare, Globe, ShieldCheck, XCircle } from 'lucide-react'
+import { ArrowRight, Bell, CheckCircle2, Radar, ShieldCheck, XCircle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { extractApiErrorMessage } from '../lib/api'
 
 const highlights = [
-  'Review alerts by severity instead of reading raw page diffs.',
-  'Keep snapshot history attached to every monitored URL.',
-  'Show a recruiter a product flow that looks deliberate and inspectable.',
+  'Alerts ranked by business impact — not raw page changes.',
+  'Full history of every change attached to each monitored page.',
+  'Automated tracking across pricing, features, and positioning.',
 ]
 
 export default function Login() {
@@ -47,22 +47,22 @@ export default function Login() {
             </div>
 
             <h1 className="mt-8 text-5xl font-semibold leading-[1.08] text-slate-950">
-              Sign in to a product flow that reads like an operations tool.
+              Your competitors changed something last night.
             </h1>
 
             <p className="mt-6 text-lg leading-8 text-slate-600">
-              Review monitors, snapshots, diffs, and alerts from a cleaner interface that feels closer to
-              production software than a generated mockup.
+              Shadow monitors competitor pages around the clock, detects meaningful changes, and
+              alerts your team before the market notices.
             </p>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-2">
               <div className="metric-card">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-                  <GitCompare className="h-4 w-4 text-blue-600" />
-                  Diff review
+                  <Radar className="h-4 w-4 text-blue-600" />
+                  Change detection
                 </div>
                 <p className="mt-3 text-sm leading-7 text-slate-600">
-                  Snapshots and change history stay inspectable directly from the monitor detail page.
+                  Pages are captured and compared automatically on your schedule. Every change is logged.
                 </p>
               </div>
               <div className="metric-card">
@@ -71,13 +71,13 @@ export default function Login() {
                   Alert triage
                 </div>
                 <p className="mt-3 text-sm leading-7 text-slate-600">
-                  Acknowledge high-signal alerts without leaving the dashboard workflow.
+                  Severity-ranked alerts so your team focuses on what matters, not noise.
                 </p>
               </div>
             </div>
 
             <div className="panel mt-8 p-6">
-              <div className="text-sm font-semibold text-slate-950">What changes in this pass</div>
+              <div className="text-sm font-semibold text-slate-950">Why teams use Shadow</div>
               <div className="mt-4 space-y-3">
                 {highlights.map((item) => (
                   <div key={item} className="flex items-start gap-3 text-sm leading-7 text-slate-600">
@@ -93,13 +93,11 @@ export default function Login() {
         <section className="mx-auto w-full max-w-md">
           <div className="mb-6">
             <Link to="/" className="inline-flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <Globe className="h-5 w-5 text-blue-600" />
-              </div>
+              <img src="/shadow-logo.png" alt="Shadow" className="h-10 w-10 rounded-xl object-cover" />
               <div>
                 <div className="text-lg font-semibold text-slate-950">Shadow</div>
                 <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  Monitoring Ops
+                  Competitor Intelligence
                 </div>
               </div>
             </Link>
@@ -110,7 +108,7 @@ export default function Login() {
               <p className="page-kicker">Sign In</p>
               <h2 className="mt-3 text-3xl font-semibold text-slate-950">Welcome back</h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                Use your account to review active monitors, recent diffs, and unresolved alerts.
+                Sign in to review active monitors, recent changes, and unresolved alerts.
               </p>
             </div>
 

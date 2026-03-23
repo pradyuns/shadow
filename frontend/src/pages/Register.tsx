@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Globe, Radar, ShieldCheck, Workflow } from 'lucide-react'
+import { ArrowRight, Radar, ShieldCheck, Workflow } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { extractApiErrorMessage } from '../lib/api'
 
 const setupNotes = [
-  'Create a monitor in a few fields instead of a dense wizard.',
-  'Keep competitor pages, diffs, and alerts in one review path.',
-  'Show a recruiting panel a product that looks organized and trustworthy.',
+  'Set up a monitor in under two minutes — just a URL and a schedule.',
+  'Track competitor pricing, features, and positioning in one place.',
+  'Severity-ranked alerts so your team acts on signal, not noise.',
 ]
 
 export default function Register() {
@@ -22,6 +22,12 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -41,16 +47,16 @@ export default function Register() {
           <div className="max-w-xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
               <ShieldCheck className="h-4 w-4" />
-              Clean onboarding flow
+              Get started in minutes
             </div>
 
             <h1 className="mt-8 text-5xl font-semibold leading-[1.08] text-slate-950">
-              Create an account and start demoing a more credible product experience.
+              Stop finding out about competitor changes from your customers.
             </h1>
 
             <p className="mt-6 text-lg leading-8 text-slate-600">
-              This version emphasizes clearer hierarchy, calmer visuals, and working monitor and alert flows
-              that are easier to explain in interviews and recruiter reviews.
+              Shadow watches competitor pages continuously, catches what changed, and delivers
+              clear alerts ranked by business impact.
             </p>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-2">
@@ -60,22 +66,22 @@ export default function Register() {
                   Monitor setup
                 </div>
                 <p className="mt-3 text-sm leading-7 text-slate-600">
-                  Configure URLs, cadence, capture mode, and scoped selectors without leaving the form.
+                  Configure URLs, check frequency, and capture mode in a single form.
                 </p>
               </div>
               <div className="metric-card">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
                   <Workflow className="h-4 w-4 text-emerald-600" />
-                  Review flow
+                  Automated pipeline
                 </div>
                 <p className="mt-3 text-sm leading-7 text-slate-600">
-                  Move from monitor creation to diffs and alerts through a tighter, more standard layout.
+                  Capture, compare, analyze, and alert — fully automated from monitor to inbox.
                 </p>
               </div>
             </div>
 
             <div className="panel mt-8 p-6">
-              <div className="text-sm font-semibold text-slate-950">Recruiter-friendly improvements</div>
+              <div className="text-sm font-semibold text-slate-950">How it works</div>
               <div className="mt-4 space-y-3">
                 {setupNotes.map((item) => (
                   <div key={item} className="flex items-start gap-3 text-sm leading-7 text-slate-600">
@@ -91,13 +97,11 @@ export default function Register() {
         <section className="mx-auto w-full max-w-md">
           <div className="mb-6">
             <Link to="/" className="inline-flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <Globe className="h-5 w-5 text-blue-600" />
-              </div>
+              <img src="/shadow-logo.png" alt="Shadow" className="h-10 w-10 rounded-xl object-cover" />
               <div>
                 <div className="text-lg font-semibold text-slate-950">Shadow</div>
                 <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  Monitoring Ops
+                  Competitor Intelligence
                 </div>
               </div>
             </Link>
@@ -108,7 +112,7 @@ export default function Register() {
               <p className="page-kicker">Create Account</p>
               <h2 className="mt-3 text-3xl font-semibold text-slate-950">Set up your workspace</h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                Create a user, open the dashboard, and review the end-to-end monitoring flow.
+                Create your account and start monitoring competitors in minutes.
               </p>
             </div>
 
@@ -151,7 +155,6 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="input-field"
                   placeholder="Minimum 8 characters"
-                  minLength={8}
                   required
                 />
               </div>

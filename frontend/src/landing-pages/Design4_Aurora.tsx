@@ -1,272 +1,731 @@
-import { ArrowRight, Bell, CheckCircle2, Clock3, GitCompare, Globe, Radar, ShieldCheck } from 'lucide-react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import {
+  ArrowRight,
+  Bell,
+  Clock3,
+  FileText,
+  LayoutDashboard,
+  Radar,
+  Settings,
+  ShieldCheck,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-const trustNotes = [
-  'Snapshot history stays attached to every monitor.',
-  'Alerts are severity-ranked before they reach the team.',
-  'Slack and email delivery can be configured per channel.',
-]
+/* ═══════════════════════════════════════════════════════════════════════════
+   Scoped styles — keeps landing page self-contained
+   ═══════════════════════════════════════════════════════════════════════════ */
+const scopedStyles = `
+  html:has(.sh-landing) {
+    scrollbar-gutter: stable;
+  }
+  .sh-landing {
+    --sh-ff: 'Space Grotesk', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+    --sh-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .sh-landing * { box-sizing: border-box; }
+  .sh-landing a { text-decoration: none; }
 
-const workflowSteps = [
-  {
-    title: 'Configure the sources that matter',
-    copy: 'Add a competitor URL, set the page type, and choose a review cadence that matches your market.',
-  },
-  {
-    title: 'Capture and compare snapshots',
-    copy: 'Shadow collects page content, stores a historical record, and computes diffs you can inspect later.',
-  },
-  {
-    title: 'Review only meaningful changes',
-    copy: 'Alerts are routed by severity so teams can triage urgent changes without losing the audit trail.',
-  },
-]
+  /* Buttons — explicit colors override inherited link color */
+  .sh-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--sh-ff); font-weight: 600; border-radius: 12px;
+    transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    cursor: pointer; border: none;
+  }
+  .sh-landing .sh-btn-dark,
+  .sh-landing a.sh-btn-dark {
+    background: #0f172a; color: #fff;
+  }
+  .sh-landing .sh-btn-dark:hover,
+  .sh-landing a.sh-btn-dark:hover {
+    background: #1e293b; box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.25);
+    transform: translateY(-1px);
+  }
+  .sh-btn-dark:active { transform: translateY(0); box-shadow: none; }
 
-export default function AuroraLanding() {
+  .sh-landing .sh-btn-outline,
+  .sh-landing a.sh-btn-outline {
+    background: #fff; color: #334155; border: 1px solid #e2e8f0;
+  }
+  .sh-landing .sh-btn-outline:hover,
+  .sh-landing a.sh-btn-outline:hover {
+    background: #f8fafc; border-color: #cbd5e1;
+  }
+
+  .sh-landing .sh-nav-link,
+  .sh-landing a.sh-nav-link {
+    font-size: 14px; font-weight: 500; color: #64748b;
+    transition: color 160ms ease;
+  }
+  .sh-nav-link:hover { color: #0f172a; }
+
+  /* Product mockup glow + float animation */
+  .sh-mockup-wrapper {
+    position: relative;
+    animation: sh-float 6s ease-in-out infinite;
+  }
+  .sh-mockup-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, #e2e8f0 0%, #f1f5f9 100%);
+    z-index: -1;
+  }
+  .sh-mockup-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 40px;
+    border-radius: 40px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
+    z-index: -1;
+    filter: blur(40px);
+  }
+
+  @keyframes sh-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  /* Sidebar active indicator pulse */
+  .sh-sidebar-pulse {
+    animation: sh-pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes sh-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Feature cards */
+  .sh-feature {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 32px;
+    transition: box-shadow 200ms ease, border-color 200ms ease, transform 200ms ease;
+  }
+  .sh-feature:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 16px 40px -16px rgba(15, 23, 42, 0.1);
+    transform: translateY(-2px);
+  }
+
+  /* CTA banner subtle shimmer */
+  .sh-cta-banner {
+    position: relative;
+    overflow: hidden;
+  }
+  .sh-cta-banner::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+    animation: sh-shimmer 8s ease-in-out infinite;
+  }
+  @keyframes sh-shimmer {
+    0%, 100% { left: -100%; }
+    50% { left: 150%; }
+  }
+
+  /* Gradient background drift */
+  @keyframes sh-gradient-drift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Step number hover */
+  .sh-step-num {
+    transition: transform 300ms var(--sh-ease), background 300ms ease;
+  }
+  .sh-step-num:hover {
+    transform: scale(1.12);
+    background: #2563eb !important;
+  }
+
+  /* Feature card icon float on hover */
+  .sh-feature:hover .sh-feature-icon {
+    transform: translateY(-3px);
+  }
+  .sh-feature-icon {
+    transition: transform 300ms var(--sh-ease);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sh-reveal { transition-duration: 0.01ms !important; transform: none !important; }
+    .sh-mockup-wrapper { animation: none !important; }
+    .sh-sidebar-pulse { animation: none !important; }
+    .sh-cta-banner::after { animation: none !important; }
+  }
+
+  /* Integration cards */
+  .sh-int-card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+    padding: 28px; transition: box-shadow 200ms ease, border-color 200ms ease;
+  }
+  .sh-int-card:hover {
+    border-color: #cbd5e1; box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.08);
+  }
+
+  /* Page type tags */
+  .sh-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    border: 1px solid #e2e8f0; background: #f8fafc; color: #334155;
+    transition: border-color 160ms ease, background 160ms ease;
+  }
+  .sh-tag:hover { border-color: #cbd5e1; background: #fff; }
+
+  @media (max-width: 768px) {
+    .sh-hero-grid { grid-template-columns: 1fr !important; }
+    .sh-feature-grid { grid-template-columns: 1fr !important; }
+    .sh-hero-ctas { flex-direction: column !important; align-items: stretch !important; }
+    .sh-mockup-sidebar { display: none !important; }
+    .sh-mockup-grid { grid-template-columns: 1fr !important; }
+    .sh-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .sh-step-grid { grid-template-columns: 1fr !important; }
+    .sh-cta-row { flex-direction: column !important; align-items: flex-start !important; }
+.sh-int-grid { grid-template-columns: 1fr !important; }
+  }
+`
+
+/* ─── Font loader ───────────────────────────────────────────────────────── */
+function useFontLoader() {
+  useEffect(() => {
+    if (document.querySelector('[data-sh-fonts]')) return
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap'
+    link.setAttribute('data-sh-fonts', '')
+    document.head.appendChild(link)
+  }, [])
+}
+
+/* ─── Scroll reveal ─────────────────────────────────────────────────────── */
+function useInView(threshold = 0.1) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.unobserve(el) } },
+      { threshold },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [threshold])
+  return { ref, visible }
+}
+
+function Reveal({ children, delay = 0, style }: { children: ReactNode; delay?: number; style?: CSSProperties }) {
+  const { ref, visible } = useInView()
   return (
-    <div className="min-h-screen">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-6 lg:px-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <Globe className="h-5 w-5 text-blue-600" />
+    <div ref={ref} className="sh-reveal" style={{
+      opacity: visible ? 1 : 0,
+      transform: visible ? 'translateY(0)' : 'translateY(24px)',
+      transition: `opacity 650ms var(--sh-ease) ${delay}ms, transform 650ms var(--sh-ease) ${delay}ms`,
+      ...style,
+    }}>
+      {children}
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Dashboard mockup — mirrors the real product interface
+   ═══════════════════════════════════════════════════════════════════════════ */
+function DashboardMockup() {
+  const sidebarItems = [
+    { icon: LayoutDashboard, label: 'Overview', active: true },
+    { icon: Radar, label: 'Monitors' },
+    { icon: Bell, label: 'Alerts' },
+    { icon: Settings, label: 'Settings' },
+  ]
+
+  const stats = [
+    { label: 'Active monitors', value: '24', sub: '22 healthy', iconBg: '#eff6ff', iconColor: '#2563eb', Icon: Radar },
+    { label: 'Captured snapshots', value: '186', sub: '12 recent changes', iconBg: '#ecfdf5', iconColor: '#059669', Icon: FileText },
+    { label: 'Open alerts', value: '8', sub: '2 critical', iconBg: '#fffbeb', iconColor: '#d97706', Icon: Bell },
+    { label: 'Healthy coverage', value: '92%', sub: 'No failures reported', iconBg: '#fef2f2', iconColor: '#dc2626', Icon: ShieldCheck },
+  ]
+
+  const alerts = [
+    { sev: 'CRITICAL', sevBg: '#fef2f2', sevColor: '#be123c', title: 'Stripe deprecated free tier entirely', summary: 'Free plan removed from pricing page — all users migrated to $25/mo Starter', time: '2m ago' },
+    { sev: 'HIGH', sevBg: '#fff7ed', sevColor: '#c2410c', title: 'Linear launched AI-powered triage', summary: 'Auto-classification and priority routing now live for all Pro teams', time: '18m ago' },
+    { sev: 'MEDIUM', sevBg: '#fffbeb', sevColor: '#b45309', title: 'Notion quietly raised Business plan storage cap', summary: 'Per-file upload limit changed from unlimited to 5GB — not announced in changelog', time: '1h ago' },
+  ]
+
+  return (
+    <div className="sh-mockup-wrapper" style={{ borderRadius: 20, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#fff' }}>
+      {/* Browser chrome */}
+      <div style={{
+        padding: '10px 16px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fca5a5' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fde68a' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#86efac' }} />
+        </div>
+        <div style={{
+          marginLeft: 12, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
+          padding: '4px 16px', fontSize: 12, color: '#94a3b8', flex: 1, maxWidth: 320,
+        }}>
+          app.shadow.io/dashboard
+        </div>
+      </div>
+
+      {/* App interface */}
+      <div className="sh-mockup-grid" style={{ display: 'grid', gridTemplateColumns: '200px 1fr', minHeight: 420 }}>
+        {/* Sidebar */}
+        <div className="sh-mockup-sidebar" style={{ background: '#0f172a', padding: '16px 0', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '0 16px 20px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <img src="/shadow-logo.png" alt="Shadow" style={{ width: 32, height: 32, borderRadius: 10, objectFit: 'cover' }} />
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Shadow</div>
+              <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#64748b' }}>Monitoring Ops</div>
+            </div>
           </div>
-          <div>
-            <div className="text-lg font-semibold text-slate-950">Shadow</div>
-            <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-              Competitor Monitoring
+
+          <div style={{ padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {sidebarItems.map(item => (
+              <div key={item.label} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                borderRadius: 10, fontSize: 13, fontWeight: 500,
+                color: item.active ? '#fff' : '#94a3b8',
+                background: item.active ? 'rgba(255,255,255,0.1)' : 'transparent',
+              }}>
+                <item.icon size={14} />
+                {item.label}
+                {item.active && (
+                  <div className="sh-sidebar-pulse" style={{
+                    marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%',
+                    background: '#4ade80',
+                  }} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 'auto', padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 8, background: 'rgba(59,130,246,0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 600, color: '#93c5fd',
+              }}>L</div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: '#fff' }}>Lebron J.</div>
+                <div style={{ fontSize: 10, color: '#64748b' }}>Admin</div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="hidden items-center gap-8 md:flex">
-          <a href="#workflow" className="text-sm font-medium text-slate-600 hover:text-slate-950">
-            Workflow
-          </a>
-          <a href="#trust" className="text-sm font-medium text-slate-600 hover:text-slate-950">
-            Why it works
-          </a>
-          <Link to="/login" className="text-sm font-semibold text-slate-700 hover:text-slate-950">
-            Sign in
-          </Link>
-          <Link to="/register" className="btn-primary">
-            Create account
-          </Link>
-        </div>
-      </nav>
-
-      <section className="mx-auto max-w-7xl px-4 pb-20 pt-10 lg:px-8 lg:pt-16">
-        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
-              <ShieldCheck className="h-4 w-4" />
-              Built for reviewable competitor monitoring
-            </div>
-
-            <h1 className="mt-8 max-w-3xl text-5xl font-semibold leading-[1.04] text-slate-950 sm:text-6xl">
-              Track competitor page changes without the noisy, over-designed demo feel.
-            </h1>
-
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              Shadow gives teams a clean workflow for monitoring key pages, checking diffs, and
-              routing alerts with enough context to trust the output.
-            </p>
-
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-              <Link to="/register" className="btn-primary">
-                Start monitoring
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link to="/login" className="btn-secondary">
-                Open dashboard
-              </Link>
-            </div>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              <div className="metric-card">
-                <div className="text-sm font-medium text-slate-500">Coverage</div>
-                <div className="mt-3 text-3xl font-semibold text-slate-950">24</div>
-                <div className="mt-1 text-sm text-slate-600">Active monitors across pricing, hiring, and changelog pages</div>
-              </div>
-              <div className="metric-card">
-                <div className="text-sm font-medium text-slate-500">Review queue</div>
-                <div className="mt-3 text-3xl font-semibold text-slate-950">8</div>
-                <div className="mt-1 text-sm text-slate-600">Open alerts with clear severity ranking and timestamps</div>
-              </div>
-              <div className="metric-card">
-                <div className="text-sm font-medium text-slate-500">Change history</div>
-                <div className="mt-3 text-3xl font-semibold text-slate-950">100%</div>
-                <div className="mt-1 text-sm text-slate-600">Snapshots and diffs remain inspectable for every monitored page</div>
-              </div>
-            </div>
+        {/* Main content */}
+        <div style={{ background: '#f8fafc', padding: 20, overflow: 'hidden' }}>
+          {/* Header */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8' }}>Overview</div>
+            <div style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', marginTop: 4 }}>Monitoring operations</div>
           </div>
 
-          <div className="panel p-4 sm:p-6">
-            <div className="rounded-[28px] border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                <div>
-                  <div className="text-sm font-semibold text-slate-950">Monitoring workflow</div>
-                  <div className="mt-1 text-sm text-slate-600">
-                    A calmer product frame that reads like software, not a landing page generator.
+          {/* Stat cards */}
+          <div className="sh-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+            {stats.map(stat => (
+              <div key={stat.label} style={{
+                background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 500, color: '#94a3b8' }}>{stat.label}</div>
+                    <div style={{ fontSize: 22, fontWeight: 600, color: '#0f172a', marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>{stat.value}</div>
+                  </div>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 10, background: stat.iconBg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <stat.Icon size={13} color={stat.iconColor} />
                   </div>
                 </div>
-                <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  Operational
-                </div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 8 }}>{stat.sub}</div>
               </div>
+            ))}
+          </div>
 
-              <div className="mt-5 grid gap-4">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white">
-                        <Radar className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-slate-950">Monitor configuration</div>
-                        <div className="text-xs text-slate-500">Pricing pages, changelogs, docs, and hiring pages</div>
-                      </div>
-                    </div>
-                    <div className="text-sm font-semibold text-slate-950">24 active</div>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-                      <GitCompare className="h-4 w-4 text-blue-600" />
-                      Latest diff
-                    </div>
-                    <div className="mt-3 text-sm leading-6 text-slate-600">
-                      Stripe pricing updated usage-based packaging and added a new annual billing note.
-                    </div>
-                    <div className="mt-4 flex items-center gap-3 text-xs text-slate-500">
-                      <Clock3 className="h-3.5 w-3.5" />
-                      5 minutes ago
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-                      <Bell className="h-4 w-4 text-amber-600" />
-                      Triage queue
-                    </div>
-                    <div className="mt-3 space-y-3 text-sm text-slate-600">
-                      <div className="flex items-center justify-between">
-                        <span>Critical alerts</span>
-                        <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">2</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Awaiting acknowledgement</span>
-                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">8</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Delivery configured</span>
-                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Slack + Email</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-sm font-semibold text-slate-950">Why recruiters can read this quickly</div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    {trustNotes.map((note) => (
-                      <div key={note} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                          <span>{note}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          {/* Alert list */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{
+              padding: '12px 16px', borderBottom: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>Recent alerts</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Latest changes routed into the review queue</div>
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 500, color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4 }}>
+                View all <ArrowRight size={11} />
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="workflow" className="border-y border-slate-200/80 bg-white/80 py-20">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="max-w-2xl">
-            <p className="page-kicker">Workflow</p>
-            <h2 className="mt-3 text-4xl font-semibold text-slate-950">
-              The product flow is straightforward by design.
-            </h2>
-            <p className="mt-4 text-lg leading-8 text-slate-600">
-              Configure sources, let the system capture changes, and review alerts with enough context
-              to decide what matters.
-            </p>
-          </div>
-
-          <div className="mt-12 grid gap-5 lg:grid-cols-3">
-            {workflowSteps.map((step, index) => (
-              <div key={step.title} className="panel p-6">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-sm font-semibold text-white">
-                  {index + 1}
+            {alerts.map((alert, i) => (
+              <div key={i} style={{
+                padding: '12px 16px',
+                borderBottom: i < alerts.length - 1 ? '1px solid #f1f5f9' : undefined,
+                display: 'flex', alignItems: 'flex-start', gap: 12,
+              }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, padding: '3px 0', borderRadius: 20,
+                  background: alert.sevBg, color: alert.sevColor, whiteSpace: 'nowrap', marginTop: 2,
+                  width: 62, textAlign: 'center', flexShrink: 0,
+                }}>
+                  {alert.sev}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{alert.title}</div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{alert.summary}</div>
                 </div>
-                <h3 className="mt-5 text-xl font-semibold text-slate-950">{step.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{step.copy}</p>
+                <div style={{ fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <Clock3 size={10} /> {alert.time}
+                </div>
               </div>
             ))}
           </div>
         </div>
-      </section>
+      </div>
+    </div>
+  )
+}
 
-      <section id="trust" className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-          <div>
-            <p className="page-kicker">Why it works</p>
-            <h2 className="mt-3 text-4xl font-semibold text-slate-950">
-              A product frame that feels closer to a real operating tool.
-            </h2>
+/* ═══════════════════════════════════════════════════════════════════════════
+   Data
+   ═══════════════════════════════════════════════════════════════════════════ */
+const features = [
+  {
+    title: 'Automated monitoring',
+    desc: 'Track competitor pricing pages, changelogs, feature lists, and hiring pages. Shadow checks on your schedule and captures full snapshots every time.',
+    Icon: Radar,
+    iconBg: '#eff6ff',
+    iconColor: '#2563eb',
+  },
+  {
+    title: 'Change detection',
+    desc: 'Every captured revision is compared line-by-line. See exactly what changed, when it changed, and how significant the change was.',
+    Icon: FileText,
+    iconBg: '#ecfdf5',
+    iconColor: '#059669',
+  },
+  {
+    title: 'Severity-ranked alerts',
+    desc: 'Changes are classified by impact. Critical pricing shifts surface before minor copy edits. Route alerts to Slack, email, or both.',
+    Icon: Bell,
+    iconBg: '#fffbeb',
+    iconColor: '#d97706',
+  },
+]
+
+const steps = [
+  { num: '01', title: 'Add your sources', desc: 'Enter competitor URLs, select page types, and set how frequently Shadow should check for changes.' },
+  { num: '02', title: 'Shadow captures and compares', desc: 'Full page snapshots are stored automatically. Every change is detected and logged after each check.' },
+  { num: '03', title: 'Triage what matters', desc: 'Alerts route to your team ranked by severity. Acknowledge, investigate, or delegate — all from one queue.' },
+]
+
+const pageTypes = [
+  { label: 'Pricing pages', desc: 'Track plan changes, feature bundling, and tier restructuring' },
+  { label: 'Changelogs', desc: 'Catch feature launches, deprecations, and version updates' },
+  { label: 'Feature lists', desc: 'Monitor capability additions, removals, and repositioning' },
+  { label: 'Documentation', desc: 'Detect API changes, integration updates, and migration guides' },
+  { label: 'Hiring pages', desc: 'Signal new initiatives from role postings and team growth' },
+]
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Main component
+   ═══════════════════════════════════════════════════════════════════════════ */
+export default function AuroraLanding() {
+  useFontLoader()
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setLoaded(true))
+    return () => cancelAnimationFrame(t)
+  }, [])
+
+  const section = (extra?: CSSProperties): CSSProperties => ({
+    width: '100%', maxWidth: 1140, margin: '0 auto', padding: '0 24px', ...extra,
+  })
+
+  const stagger = (idx: number, base = 80) => ({
+    opacity: loaded ? 1 : 0,
+    transform: loaded ? 'translateY(0)' : 'translateY(20px)',
+    transition: `opacity 650ms var(--sh-ease) ${base + idx * 120}ms, transform 650ms var(--sh-ease) ${base + idx * 120}ms`,
+  } as CSSProperties)
+
+  return (
+    <div className="sh-landing" style={{
+      minHeight: '100vh',
+      width: '100%',
+      margin: '0 auto',
+      overflowX: 'hidden' as const,
+      background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 40%, #f1f5f9 100%)',
+      color: '#0f172a',
+      fontFamily: 'var(--sh-ff)',
+      WebkitFontSmoothing: 'antialiased',
+      textRendering: 'optimizeLegibility',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      alignItems: 'center',
+    }}>
+      <style>{scopedStyles}</style>
+
+      {/* ── Navigation ──────────────────────────────────────────────── */}
+      <nav style={{ width: '100%', ...stagger(0, 0) }}>
+        <div style={{
+          ...section(), padding: '20px 24px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <img src="/shadow-logo.png" alt="Shadow" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
+            <span style={{
+              fontSize: 22, fontWeight: 700, color: '#0f172a',
+              letterSpacing: '-0.04em', lineHeight: 1,
+            }}>Shadow</span>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="panel-muted p-6">
-              <div className="text-sm font-semibold text-slate-950">Structured pages</div>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Headers, summaries, and status blocks are organized like internal SaaS software rather than a design exercise.
-              </p>
-            </div>
-            <div className="panel-muted p-6">
-              <div className="text-sm font-semibold text-slate-950">Actionable alerts</div>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Severity, timestamps, and acknowledgement state stay visible so changes can be triaged quickly.
-              </p>
-            </div>
-            <div className="panel-muted p-6">
-              <div className="text-sm font-semibold text-slate-950">Audit-ready history</div>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Snapshots and diffs live with the monitor, which makes recruiter demos easier to explain and inspect.
-              </p>
-            </div>
-            <div className="panel-muted p-6">
-              <div className="text-sm font-semibold text-slate-950">Delivery controls</div>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Notification settings can be configured by channel with severity thresholds and optional digest delivery.
-              </p>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <a href="#features" className="sh-nav-link">Features</a>
+            <Link to="/login" className="sh-nav-link">Sign in</Link>
+            <Link to="/register" className="sh-btn sh-btn-dark" style={{ fontSize: 14, padding: '10px 20px' }}>
+              Get started <ArrowRight size={14} />
+            </Link>
           </div>
         </div>
+      </nav>
 
-        <div className="panel mt-12 flex flex-col items-start justify-between gap-6 p-8 lg:flex-row lg:items-center">
-          <div>
-            <div className="text-2xl font-semibold text-slate-950">Ready to review the product in context?</div>
-            <div className="mt-2 text-sm leading-7 text-slate-600">
-              Open the app, create a monitor, and walk through the alert and snapshot flow directly.
-            </div>
+      {/* ── Hero ────────────────────────────────────────────────────── */}
+      <section style={section({ paddingTop: 64, paddingBottom: 48 })}>
+        <div style={{ maxWidth: 620, margin: '0 auto', textAlign: 'center' }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: 100,
+            padding: '6px 16px', fontSize: 13, fontWeight: 600, color: '#2563eb',
+            ...stagger(0),
+          }}>
+            <ShieldCheck size={14} />
+            Competitor intelligence for product teams
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link to="/register" className="btn-primary">
-              Create account
+
+          <h1 style={{
+            marginTop: 24,
+            fontSize: 'clamp(36px, 5vw, 56px)',
+            fontWeight: 700,
+            lineHeight: 1.08,
+            letterSpacing: '-0.035em',
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #2563eb 100%)',
+            backgroundSize: '200% 200%',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            animation: 'sh-gradient-drift 8s ease-in-out infinite',
+            ...stagger(1),
+          }}>
+            Track competitor changes. Act on what matters.
+          </h1>
+
+          <p style={{
+            marginTop: 20, fontSize: 17, lineHeight: 1.65, color: '#64748b', maxWidth: 480, margin: '20px auto 0',
+            ...stagger(2),
+          }}>
+            Shadow monitors competitor pages, captures every revision, detects changes, and routes severity-ranked alerts to your team.
+          </p>
+
+          <div className="sh-hero-ctas" style={{
+            marginTop: 32, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12,
+            ...stagger(3),
+          }}>
+            <Link to="/register" className="sh-btn sh-btn-dark" style={{ fontSize: 15, padding: '14px 28px' }}>
+              Start monitoring <ArrowRight size={16} />
             </Link>
-            <Link to="/login" className="btn-secondary">
+            <Link to="/login" className="sh-btn sh-btn-outline" style={{ fontSize: 15, padding: '14px 24px' }}>
               Sign in
             </Link>
           </div>
         </div>
       </section>
+
+      {/* ── Product mockup ──────────────────────────────────────────── */}
+      <section style={section({ paddingBottom: 80 })}>
+        <Reveal>
+          <DashboardMockup />
+        </Reveal>
+      </section>
+
+      {/* ── Features ────────────────────────────────────────────────── */}
+      <section id="features" style={section({ paddingTop: 40, paddingBottom: 80 })}>
+        <Reveal>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8', marginBottom: 12 }}>
+              Core capabilities
+            </div>
+            <h2 style={{ fontSize: 'clamp(26px, 3vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', color: '#0f172a' }}>
+              Everything you need to stay ahead
+            </h2>
+          </div>
+        </Reveal>
+
+        <div className="sh-feature-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          {features.map((feat, i) => (
+            <Reveal key={feat.title} delay={i * 80}>
+              <div className="sh-feature" style={{ height: '100%' }}>
+                <div className="sh-feature-icon" style={{
+                  width: 44, height: 44, borderRadius: 14, background: feat.iconBg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20,
+                }}>
+                  <feat.Icon size={20} color={feat.iconColor} />
+                </div>
+                <h3 style={{ fontSize: 17, fontWeight: 600, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                  {feat.title}
+                </h3>
+                <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.7, color: '#64748b' }}>
+                  {feat.desc}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ── How it works ────────────────────────────────────────────── */}
+      <section id="how" style={section({ paddingTop: 40, paddingBottom: 80 })}>
+        <Reveal>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8', marginBottom: 12 }}>
+              How it works
+            </div>
+            <h2 style={{ fontSize: 'clamp(26px, 3vw, 36px)', fontWeight: 700, letterSpacing: '-0.025em', color: '#0f172a' }}>
+              Set up in minutes, not days
+            </h2>
+          </div>
+        </Reveal>
+
+        <div className="sh-step-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          {steps.map((step, i) => (
+            <Reveal key={step.num} delay={i * 80}>
+              <div style={{ padding: '0 8px' }}>
+                <div className="sh-step-num" style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: '#0f172a', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, fontWeight: 600, marginBottom: 20, cursor: 'default',
+                }}>
+                  {step.num}
+                </div>
+                <h3 style={{ fontSize: 17, fontWeight: 600, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                  {step.title}
+                </h3>
+                <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.7, color: '#64748b' }}>
+                  {step.desc}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ── What you can monitor ──────────────────────────────────── */}
+      <section style={section({ paddingTop: 40, paddingBottom: 80 })}>
+        <div className="sh-int-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 24, alignItems: 'start' }}>
+          <Reveal>
+            <div className="sh-int-card">
+              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8', marginBottom: 12 }}>
+                Supported page types
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: 20 }}>
+                Monitor what matters to your market
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {pageTypes.map(pt => (
+                  <div key={pt.label} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{
+                      width: 6, height: 6, borderRadius: '50%', background: '#2563eb',
+                      marginTop: 7, flexShrink: 0,
+                    }} />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{pt.label}</div>
+                      <div style={{ fontSize: 13, color: '#64748b', marginTop: 2, lineHeight: 1.5 }}>{pt.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div className="sh-int-card">
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8', marginBottom: 12 }}>
+                  Notifications
+                </div>
+                <h3 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: 16 }}>
+                  Route alerts where your team works
+                </h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {['Slack webhooks', 'Email digest', 'Per-channel thresholds', 'Severity filtering', 'Acknowledgement tracking'].map(tag => (
+                    <span key={tag} className="sh-tag">{tag}</span>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── CTA ─────────────────────────────────────────────────────── */}
+      <section style={section({ paddingTop: 20, paddingBottom: 96 })}>
+        <Reveal>
+          <div className="sh-cta-banner" style={{
+            background: '#0f172a', borderRadius: 24, padding: '56px 48px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+          }}>
+            <h2 style={{
+              fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 700,
+              color: '#fff', letterSpacing: '-0.025em', maxWidth: 480,
+            }}>
+              Start monitoring your competitive landscape today
+            </h2>
+            <p style={{ marginTop: 12, fontSize: 15, color: '#94a3b8', maxWidth: 420, lineHeight: 1.6 }}>
+              Set up your first monitor in under two minutes. No credit card required.
+            </p>
+            <div className="sh-cta-row" style={{ marginTop: 28, display: 'flex', gap: 12, alignItems: 'center' }}>
+              <Link to="/register" className="sh-btn sh-btn-outline" style={{
+                fontSize: 15, padding: '14px 28px', background: '#fff', color: '#0f172a',
+                border: 'none',
+              }}>
+                Create free account <ArrowRight size={16} />
+              </Link>
+              <Link to="/login" className="sh-nav-link" style={{ fontSize: 14, fontWeight: 500, color: '#94a3b8' }}>
+                or sign in
+              </Link>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ── Footer ──────────────────────────────────────────────────── */}
+      <footer style={{ width: '100%', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{
+          ...section(), padding: '24px 24px 40px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <img src="/shadow-logo.png" alt="Shadow" style={{ width: 20, height: 20, borderRadius: 4, objectFit: 'cover' }} />
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#94a3b8', letterSpacing: '-0.02em' }}>Shadow</span>
+          </div>
+          <div style={{ display: 'flex', gap: 20 }}>
+            <Link to="/login" className="sh-nav-link" style={{ fontSize: 13 }}>Sign in</Link>
+            <Link to="/register" className="sh-nav-link" style={{ fontSize: 13 }}>Get started</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
