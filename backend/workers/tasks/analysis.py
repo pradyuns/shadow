@@ -188,7 +188,18 @@ def classify_significance(self, diff_id: str) -> dict:
             {"$set": {"alert_id": alert_id}},
         )
 
-        logger.info("alert_created", alert_id=alert_id, severity=severity, monitor_id=monitor_id)
+        # Assign to cluster (online clustering)
+        from workers.clustering.alert_clusterer import assign_to_cluster
+
+        cluster_id = assign_to_cluster(db, alert)
+
+        logger.info(
+            "alert_created",
+            alert_id=alert_id,
+            severity=severity,
+            monitor_id=monitor_id,
+            cluster_id=str(cluster_id) if cluster_id else None,
+        )
 
         # Dispatch notifications
         from workers.tasks.notifications import send_notifications
