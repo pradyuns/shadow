@@ -139,6 +139,20 @@ class TestFilterDiff:
         assert result.noise_lines_removed == 2
         assert result.is_empty_after_filter is True
 
+    def test_learned_patterns_are_applied_and_tracked(self):
+        diff = """--- previous
++++ current
+@@ -1,3 +1,3 @@
+ Content
+-Last updated: March 12
++Last updated: March 13
+ End"""
+        result = filter_diff(diff, learned_noise_patterns=[r"^Last\s+updated:\s+.+?$"])
+        assert result.noise_lines_removed == 2
+        assert result.learned_noise_lines_removed == 2
+        assert result.learned_pattern_hits[r"^Last\s+updated:\s+.+?$"] == 2
+        assert result.is_empty_after_filter is True
+
     def test_invalid_custom_pattern_skipped(self):
         diff = """--- previous
 +++ current

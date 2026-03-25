@@ -44,6 +44,11 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
     from app.db.postgres_sync import get_sync_db
     from app.models.monitor import Monitor
     from workers.differ.text_differ import compute_text_diff
+    from workers.scraper.adaptive_noise_learning import (
+        get_active_learned_patterns,
+        learn_patterns_from_diff,
+        record_learned_pattern_usage,
+    )
     from workers.scraper.noise_filter import filter_diff
 
     mongo_db = get_sync_mongo_db()
@@ -95,6 +100,14 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
             monitor = db.execute(select(Monitor).where(Monitor.id == monitor_id)).scalar_one_or_none()
             monitor_noise_patterns = monitor.noise_patterns if monitor else []
             monitor_name = monitor.name if monitor else "unknown"
+            if monitor:
+                try:
+                    learned_noise_patterns = get_active_learned_patterns(mongo_db, monitor_id=str(monitor_id))
+                except Exception:
+                    learned_noise_patterns = []
+                    logger.warning("adaptive_noise_load_failed", monitor_id=monitor_id, exc_info=True)
+            else:
+                learned_noise_patterns = []
         finally:
             db.close()
 
@@ -111,7 +124,11 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
             return {"diff_id": None, "has_changes": False, "is_baseline": False}
 
         # Apply noise filter
-        filter_result = filter_diff(diff_result.unified_diff, monitor_noise_patterns)
+        filter_result = filter_diff(
+            diff_result.unified_diff,
+            monitor_noise_patterns,
+            learned_noise_patterns=learned_noise_patterns,
+        )
 
         # Store diff
         diff_doc = {
@@ -124,11 +141,43 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
             "diff_lines_removed": diff_result.lines_removed,
             "diff_size_bytes": diff_result.diff_size_bytes,
             "noise_lines_removed": filter_result.noise_lines_removed,
+            "learned_noise_lines_removed": filter_result.learned_noise_lines_removed,
+            "learned_noise_pattern_hits": filter_result.learned_pattern_hits,
             "is_empty_after_filter": filter_result.is_empty_after_filter,
             "created_at": datetime.now(timezone.utc),
         }
         inserted = mongo_db.diffs.insert_one(diff_doc)
         diff_id = str(inserted.inserted_id)
+
+        if filter_result.learned_pattern_hits:
+            try:
+                record_learned_pattern_usage(
+                    mongo_db,
+                    monitor_id=str(monitor_id),
+                    pattern_hits=filter_result.learned_pattern_hits,
+                    diff_id=diff_id,
+                    recorded_at=diff_doc["created_at"],
+                )
+            except Exception:
+                logger.warning("adaptive_noise_usage_record_failed", monitor_id=monitor_id, diff_id=diff_id, exc_info=True)
+
+        if monitor:
+            try:
+                learn_stats = learn_patterns_from_diff(
+                    mongo_db,
+                    monitor_id=str(monitor.id),
+                    monitor_name=monitor.name,
+                    user_id=str(monitor.user_id),
+                    competitor_name=monitor.competitor_name,
+                    diff_id=diff_id,
+                    unified_diff=diff_result.unified_diff,
+                    observed_at=diff_doc["created_at"],
+                )
+            except Exception:
+                learn_stats = {"error": "adaptive_learning_failed"}
+                logger.warning("adaptive_noise_learning_failed", monitor_id=monitor_id, diff_id=diff_id, exc_info=True)
+        else:
+            learn_stats = {"skipped": "monitor_not_found"}
 
         new_status = "diffed" if not filter_result.is_empty_after_filter else "no_change"
         mongo_db.snapshots.update_one(
@@ -143,6 +192,9 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
             lines_added=diff_result.lines_added,
             lines_removed=diff_result.lines_removed,
             noise_removed=filter_result.noise_lines_removed,
+            learned_noise_removed=filter_result.learned_noise_lines_removed,
+            learned_patterns_matched=len(filter_result.learned_pattern_hits),
+            adaptive_learning=learn_stats,
             has_meaningful_changes=not filter_result.is_empty_after_filter,
         )
 

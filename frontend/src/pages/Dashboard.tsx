@@ -12,7 +12,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import api from '../lib/api'
-import type { Alert, Monitor } from '../lib/types'
+import type { Alert, Monitor, NoiseLearningOverviewItem } from '../lib/types'
 import { SEVERITY_COLORS, alertTitle, type SeverityLevel } from '../lib/types'
 
 function timeAgo(dateStr: string) {
@@ -37,15 +37,18 @@ function nextCheckWindow(dateStr: string) {
 export default function Dashboard() {
   const [monitors, setMonitors] = useState<Monitor[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
+  const [noiseOverview, setNoiseOverview] = useState<NoiseLearningOverviewItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       api.get('/monitors').catch(() => ({ data: [] })),
       api.get('/alerts?per_page=10').catch(() => ({ data: [] })),
-    ]).then(([m, a]) => {
+      api.get('/noise-learning/overview?per_page=6').catch(() => ({ data: [] })),
+    ]).then(([m, a, noise]) => {
       setMonitors(Array.isArray(m.data) ? m.data : m.data.items || [])
       setAlerts(Array.isArray(a.data) ? a.data : a.data.items || [])
+      setNoiseOverview(Array.isArray(noise.data) ? noise.data : noise.data.items || [])
       setLoading(false)
     })
   }, [])
@@ -266,6 +269,42 @@ export default function Dashboard() {
                       </div>
                     </Link>
                   ))}
+              </div>
+            )}
+          </div>
+
+          <div className="panel p-6">
+            <div className="text-lg font-semibold text-slate-950">Adaptive noise intelligence</div>
+            <div className="mt-1 text-sm text-slate-600">
+              Monitor-specific learned patterns and weekly filtering impact.
+            </div>
+
+            {noiseOverview.length === 0 ? (
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+                No learned patterns are active yet.
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {noiseOverview.map((item) => (
+                  <Link
+                    key={item.monitor_id}
+                    to={`/monitors/${item.monitor_id}`}
+                    className="flex items-start justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 hover:border-slate-300 hover:bg-white"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-slate-950">{item.monitor_name}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {item.learned_patterns} learned · {item.active_patterns} active
+                      </div>
+                    </div>
+                    <div className="ml-4 text-right">
+                      <div className="text-sm font-semibold text-slate-950">{item.lines_filtered_7d} lines/week</div>
+                      <div className="text-xs text-slate-500">
+                        {(item.avg_confidence * 100).toFixed(0)}% confidence
+                      </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </div>
