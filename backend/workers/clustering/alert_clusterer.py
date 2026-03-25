@@ -10,7 +10,7 @@ When a new alert arrives:
 1. Extract feature vector: (competitor, timestamp, categories, summary keywords)
 2. Query open clusters for the same competitor within the CLUSTER_WINDOW
 3. Compute similarity score against each candidate cluster:
-   - Temporal proximity:  exp(-hours_diff / TEMPORAL_HALF_LIFE)
+   - Temporal proximity:  2^(-hours_diff / TEMPORAL_HALF_LIFE)
    - Category overlap:    Jaccard similarity on category sets
    - Keyword similarity:  Jaccard similarity on extracted keyword sets
    - Combined:            weighted sum of the three components
@@ -28,18 +28,22 @@ Design decisions:
   B is similar to C, but A and C are less similar — they still belong together.
 - Online (one-at-a-time): alerts arrive asynchronously from Celery tasks. We
   can't batch-cluster because we don't know when the next alert will arrive.
+- Row-level locking: SELECT FOR UPDATE on candidate clusters prevents two
+  concurrent workers from both creating new clusters for the same event.
+  Advisory locks on the create path prevent TOCTOU races.
 
 Complexity: O(K) per alert where K = number of open clusters for that competitor.
 K is typically < 10, so this is effectively O(1) in practice.
 """
 
+import hashlib
 import math
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from workers.classifier.schemas import SEVERITY_ORDER
@@ -50,9 +54,15 @@ logger = structlog.get_logger()
 # How far back to look for open clusters to merge into
 CLUSTER_WINDOW_HOURS = 48
 
-# Exponential decay half-life for temporal similarity.
-# At 4 hours apart, temporal score = 0.5. At 8 hours, 0.25. At 16 hours, 0.06.
+# True half-life for temporal similarity decay.
+# At exactly TEMPORAL_HALF_LIFE hours apart, temporal score = 0.5.
+# At 2x half-life, score = 0.25. At 3x, 0.125. Etc.
+# Formula: score = 2^(-hours_diff / TEMPORAL_HALF_LIFE)
+#        = exp(-hours_diff * ln(2) / TEMPORAL_HALF_LIFE)
 TEMPORAL_HALF_LIFE = 4.0
+
+# Precomputed: ln(2) / TEMPORAL_HALF_LIFE
+_DECAY_RATE = math.log(2) / TEMPORAL_HALF_LIFE
 
 # Minimum combined similarity to merge into an existing cluster.
 # Below this threshold, a new cluster is created.
@@ -103,18 +113,20 @@ def _jaccard(set_a: set, set_b: set) -> float:
 
 
 def _temporal_similarity(t1: datetime, t2: datetime) -> float:
-    """Exponential decay similarity based on time difference.
+    """True half-life exponential decay similarity.
 
-    score = exp(-hours_diff / TEMPORAL_HALF_LIFE)
+    score = 2^(-hours_diff / TEMPORAL_HALF_LIFE)
+          = exp(-hours_diff * ln(2) / TEMPORAL_HALF_LIFE)
 
     Properties:
     - Same time: 1.0
-    - TEMPORAL_HALF_LIFE apart: 0.5
+    - TEMPORAL_HALF_LIFE apart: 0.5 (exactly)
     - 2 * TEMPORAL_HALF_LIFE apart: 0.25
+    - 3 * TEMPORAL_HALF_LIFE apart: 0.125
     - Monotonically decreasing, never reaches 0
     """
     hours_diff = abs((t1 - t2).total_seconds()) / 3600
-    return math.exp(-hours_diff / TEMPORAL_HALF_LIFE)
+    return math.exp(-hours_diff * _DECAY_RATE)
 
 
 def compute_similarity(
@@ -143,10 +155,27 @@ def compute_similarity(
     }
 
 
+def _advisory_lock_id(user_id: uuid.UUID, competitor: str) -> int:
+    """Derive a stable int64 advisory lock key from (user_id, competitor).
+
+    PostgreSQL advisory locks use bigint keys. We hash the composite key
+    to a 63-bit integer (positive, since pg_advisory_xact_lock takes bigint).
+    """
+    raw = f"{user_id}:{competitor}".encode()
+    return int(hashlib.sha256(raw).hexdigest()[:15], 16)
+
+
 def assign_to_cluster(db: Session, alert) -> uuid.UUID | None:
     """Assign an alert to an existing cluster or create a new one.
 
     This is the main entry point called from the analysis task after alert creation.
+
+    Concurrency safety:
+    - Candidate clusters are loaded with SELECT FOR UPDATE to prevent two workers
+      from simultaneously merging into the same cluster with stale counts.
+    - A PostgreSQL transaction-scoped advisory lock on (user_id, competitor_name)
+      serializes the "no match → create new cluster" path, preventing two workers
+      from each creating a new cluster for the same event.
 
     Args:
         db: Synchronous SQLAlchemy session (Celery worker context)
@@ -168,20 +197,39 @@ def assign_to_cluster(db: Session, alert) -> uuid.UUID | None:
             logger.warning("cluster_monitor_not_found", alert_id=str(alert.id))
             return None
 
-        competitor = monitor.competitor_name or "Unknown"
+        competitor = (monitor.competitor_name or "").strip()
+
+        # Skip clustering for monitors without a competitor name.
+        # Without a real competitor, alerts from unrelated companies would all
+        # land in one shared bucket, defeating the purpose of clustering.
+        if not competitor:
+            logger.info("cluster_skipped_no_competitor", alert_id=str(alert.id))
+            return None
+
         alert_categories = set(alert.categories or [])
         alert_keywords = _extract_keywords(alert.summary)
         alert_time = alert.created_at or datetime.now(timezone.utc)
 
-        # Query open clusters for this competitor within the window
+        # Acquire advisory lock for this (user, competitor) pair.
+        # This serializes cluster creation so two concurrent workers can't both
+        # see "no matching cluster" and each create a new one.
+        # Transaction-scoped: released automatically on commit/rollback.
+        lock_id = _advisory_lock_id(alert.user_id, competitor)
+        db.execute(text("SELECT pg_advisory_xact_lock(:lock_id)"), {"lock_id": lock_id})
+
+        # Query open clusters with row-level locking.
+        # FOR UPDATE prevents concurrent reads from getting stale alert_count/severity
+        # while we decide whether to merge.
         cutoff = datetime.now(timezone.utc) - timedelta(hours=CLUSTER_WINDOW_HOURS)
         candidates = db.execute(
-            select(AlertCluster).where(
+            select(AlertCluster)
+            .where(
                 AlertCluster.user_id == alert.user_id,
                 AlertCluster.competitor_name == competitor,
                 AlertCluster.is_resolved == False,
                 AlertCluster.updated_at >= cutoff,
             )
+            .with_for_update()
         ).scalars().all()
 
         best_cluster = None

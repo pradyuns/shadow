@@ -12,6 +12,7 @@ import pytest
 from workers.clustering.alert_clusterer import (
     MERGE_THRESHOLD,
     TEMPORAL_HALF_LIFE,
+    _advisory_lock_id,
     _extract_keywords,
     _jaccard,
     _temporal_similarity,
@@ -91,29 +92,41 @@ class TestTemporalSimilarity:
         now = datetime.now(timezone.utc)
         assert _temporal_similarity(now, now) == 1.0
 
-    def test_half_life(self):
-        """At exactly TEMPORAL_HALF_LIFE hours apart, score should be 0.5."""
+    def test_half_life_gives_exactly_half(self):
+        """At exactly TEMPORAL_HALF_LIFE hours apart, score must be exactly 0.5.
+
+        This is the defining property of a true half-life decay:
+        score = 2^(-hours_diff / half_life)
+        At hours_diff = half_life: 2^(-1) = 0.5
+        """
         now = datetime.now(timezone.utc)
         later = now + timedelta(hours=TEMPORAL_HALF_LIFE)
         score = _temporal_similarity(now, later)
-        # exp(-1) ≈ 0.368, not 0.5. That's because half-life here means
-        # the parameter in the exponent, not the half-life in the traditional sense.
-        # exp(-4/4) = exp(-1) ≈ 0.368
-        assert score == pytest.approx(math.exp(-1), abs=0.001)
+        assert score == pytest.approx(0.5, abs=0.001)
 
-    def test_double_half_life(self):
+    def test_double_half_life_gives_quarter(self):
+        """At 2x half-life, score = 0.25."""
         now = datetime.now(timezone.utc)
         later = now + timedelta(hours=TEMPORAL_HALF_LIFE * 2)
         score = _temporal_similarity(now, later)
-        assert score == pytest.approx(math.exp(-2), abs=0.001)
+        assert score == pytest.approx(0.25, abs=0.001)
+
+    def test_triple_half_life_gives_eighth(self):
+        """At 3x half-life, score = 0.125."""
+        now = datetime.now(timezone.utc)
+        later = now + timedelta(hours=TEMPORAL_HALF_LIFE * 3)
+        score = _temporal_similarity(now, later)
+        assert score == pytest.approx(0.125, abs=0.001)
 
     def test_24_hours_very_low(self):
-        """24 hours apart should give very low similarity."""
+        """24 hours apart should give very low similarity.
+
+        2^(-24/4) = 2^(-6) = 1/64 ≈ 0.0156
+        """
         now = datetime.now(timezone.utc)
         later = now + timedelta(hours=24)
         score = _temporal_similarity(now, later)
-        # exp(-24/4) = exp(-6) ≈ 0.0025
-        assert score < 0.01
+        assert score == pytest.approx(1 / 64, abs=0.001)
 
     def test_symmetry(self):
         """Order shouldn't matter."""
@@ -166,13 +179,11 @@ class TestComputeSimilarity:
             {"feature_launch"}, {"enterprise", "dashboard", "analytics"},
             now + timedelta(minutes=30),
         )
-        # Temporal high (~0.88 at 30min with half-life=4h), some keyword overlap
-        # ("enterprise"), zero category overlap
-        assert scores["temporal"] > 0.85
+        # Temporal high at 30min with 4h half-life:
+        # 2^(-0.5/4) = 2^(-0.125) ≈ 0.917
+        assert scores["temporal"] > 0.9
         assert scores["keyword"] > 0  # "enterprise" overlaps
         assert scores["category"] == 0.0
-        # Whether this merges depends on the keyword overlap strength
-        # This is the interesting edge case — the threshold determines behavior
 
     def test_same_page_type_hours_apart(self):
         """Same category change 2 hours later should still have decent score."""
@@ -183,11 +194,27 @@ class TestComputeSimilarity:
             {"pricing_change"}, {"tier", "business", "annual"},
             now + timedelta(hours=2),
         )
-        # temporal = exp(-0.5) ≈ 0.61
-        # category = 1.0 (identical)
-        # keyword = jaccard({tier,starter,monthly}, {tier,business,annual}) = 1/5 = 0.2
-        assert scores["temporal"] == pytest.approx(math.exp(-0.5), abs=0.01)
+        # temporal = 2^(-2/4) = 2^(-0.5) ≈ 0.707
+        assert scores["temporal"] == pytest.approx(2 ** (-0.5), abs=0.01)
         assert scores["category"] == 1.0
+
+    def test_same_category_at_half_life_with_no_keyword_overlap(self):
+        """At exactly the half-life, same category + zero keyword overlap.
+
+        temporal = 0.5, category = 1.0, keyword = 0.0
+        combined = 0.4*0.5 + 0.3*1.0 + 0.3*0.0 = 0.2 + 0.3 = 0.5
+        Should merge (0.5 > 0.45 threshold).
+        """
+        now = datetime.now(timezone.utc)
+        scores = compute_similarity(
+            {"pricing_change"}, {"starter", "monthly"},
+            now,
+            {"pricing_change"}, {"enterprise", "annual"},
+            now + timedelta(hours=TEMPORAL_HALF_LIFE),
+        )
+        assert scores["temporal"] == pytest.approx(0.5, abs=0.01)
+        assert scores["combined"] == pytest.approx(0.5, abs=0.01)
+        assert scores["combined"] >= MERGE_THRESHOLD
 
     def test_weights_sum_to_one(self):
         """Verify weight constants are valid."""
@@ -205,16 +232,14 @@ class TestThresholdBehavior:
     def test_rapid_multi_page_update_clusters(self):
         """A competitor updating 3 pages in 1 hour should cluster."""
         now = datetime.now(timezone.utc)
-        # First alert: pricing page
         scores = compute_similarity(
             {"pricing_change"}, {"enterprise", "pricing", "tier"},
             now,
             {"feature_launch"}, {"enterprise", "dashboard"},
             now + timedelta(minutes=45),
         )
-        # Even with category mismatch, temporal + keyword overlap should be enough
-        # temporal ≈ 0.98, keyword = jaccard overlap on "enterprise"
-        # This is deliberately on the boundary — the test documents the threshold's effect
+        # temporal = 2^(-0.75/4) ≈ 0.878, keyword overlap on "enterprise", no category overlap
+        assert scores["temporal"] > 0.85
 
     def test_same_competitor_days_apart_low_temporal(self):
         """Changes from the same competitor 5 days apart have near-zero temporal score.
@@ -231,9 +256,35 @@ class TestThresholdBehavior:
             {"pricing_change"}, {"stripe", "tier", "pricing"},
             now + timedelta(days=5),
         )
-        # temporal = exp(-120/4) ≈ 0.0
+        # 2^(-120/4) = 2^(-30) ≈ 9.3e-10
         assert scores["temporal"] < 0.001
-        # But category=1.0 and keyword=1.0 push combined above threshold —
-        # this is why CLUSTER_WINDOW_HOURS exists as a hard cutoff
         assert scores["category"] == 1.0
         assert scores["keyword"] == 1.0
+
+
+# ── Advisory lock key ────────────────────────────────────────────────────────
+
+
+class TestAdvisoryLockId:
+    def test_deterministic(self):
+        """Same inputs always produce the same lock ID."""
+        uid = uuid.UUID("12345678-1234-1234-1234-123456789012")
+        assert _advisory_lock_id(uid, "Acme") == _advisory_lock_id(uid, "Acme")
+
+    def test_different_for_different_competitors(self):
+        uid = uuid.UUID("12345678-1234-1234-1234-123456789012")
+        assert _advisory_lock_id(uid, "Acme") != _advisory_lock_id(uid, "Beacon")
+
+    def test_different_for_different_users(self):
+        uid1 = uuid.UUID("12345678-1234-1234-1234-123456789012")
+        uid2 = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+        assert _advisory_lock_id(uid1, "Acme") != _advisory_lock_id(uid2, "Acme")
+
+    def test_returns_positive_int(self):
+        uid = uuid.UUID("12345678-1234-1234-1234-123456789012")
+        lock_id = _advisory_lock_id(uid, "Acme")
+        assert isinstance(lock_id, int)
+        assert lock_id > 0
+
+
+import uuid
