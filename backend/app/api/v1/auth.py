@@ -67,9 +67,13 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
-    from workers.tasks.email_verification import send_verification_email
+    if settings.sendgrid_api_key:
+        from workers.tasks.email_verification import send_verification_email
 
-    send_verification_email.delay(str(user.id))
+        send_verification_email.delay(str(user.id))
+    else:
+        user.is_email_verified = True
+        await db.commit()
 
     return user
 

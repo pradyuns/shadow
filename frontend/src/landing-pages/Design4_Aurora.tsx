@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   ArrowRight,
   Bell,
   Clock3,
+  Eye,
   FileText,
+  GitCompareArrows,
   LayoutDashboard,
   Radar,
   Settings,
   ShieldCheck,
+  Zap,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -127,6 +130,36 @@ const scopedStyles = `
     50% { left: 150%; }
   }
 
+  /* Word flip animation */
+  .sh-word-flip {
+    display: inline-block;
+    position: relative;
+    vertical-align: baseline;
+    overflow: hidden;
+  }
+  .sh-word-flip-item {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    text-align: left;
+    transition: transform 550ms var(--sh-ease), opacity 350ms ease;
+    will-change: transform, opacity;
+  }
+  .sh-word-flip-item[data-state="enter"] {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .sh-word-flip-item[data-state="exit-up"] {
+    transform: translateY(-110%);
+    opacity: 0;
+  }
+  .sh-word-flip-item[data-state="below"] {
+    transform: translateY(110%);
+    opacity: 0;
+    transition: none;
+  }
+
   /* Gradient background drift */
   @keyframes sh-gradient-drift {
     0% { background-position: 0% 50%; }
@@ -176,8 +209,47 @@ const scopedStyles = `
   }
   .sh-tag:hover { border-color: #cbd5e1; background: #fff; }
 
+  /* Morph page animation */
+  .sh-morph-page {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    overflow: hidden;
+    font-family: var(--sh-ff);
+    box-shadow: 0 8px 32px -8px rgba(15, 23, 42, 0.1);
+  }
+  .sh-morph-row {
+    transition: opacity 600ms ease, transform 600ms var(--sh-ease);
+  }
+  .sh-morph-row[data-visible="false"] {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .sh-morph-row[data-visible="true"] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .sh-morph-val {
+    transition: opacity 400ms ease;
+    position: relative;
+  }
+  .sh-morph-highlight {
+    position: absolute;
+    inset: -2px -6px;
+    border-radius: 4px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    opacity: 0;
+    transition: opacity 400ms ease 200ms;
+  }
+  .sh-morph-highlight[data-active="true"] {
+    opacity: 1;
+  }
+
   @media (max-width: 768px) {
     .sh-hero-grid { grid-template-columns: 1fr !important; }
+    .sh-hero-morph { display: none !important; }
+    .sh-hero-text { text-align: center !important; align-items: center !important; }
     .sh-feature-grid { grid-template-columns: 1fr !important; }
     .sh-hero-ctas { flex-direction: column !important; align-items: stretch !important; }
     .sh-mockup-sidebar { display: none !important; }
@@ -185,7 +257,7 @@ const scopedStyles = `
     .sh-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
     .sh-step-grid { grid-template-columns: 1fr !important; }
     .sh-cta-row { flex-direction: column !important; align-items: flex-start !important; }
-.sh-int-grid { grid-template-columns: 1fr !important; }
+    .sh-int-grid { grid-template-columns: 1fr !important; }
   }
 `
 
@@ -228,6 +300,219 @@ function Reveal({ children, delay = 0, style }: { children: ReactNode; delay?: n
       ...style,
     }}>
       {children}
+    </div>
+  )
+}
+
+/* ─── Flip words ────────────────────────────────────────────────────────── */
+function FlipWords({ words, interval = 2200 }: { words: string[]; interval?: number }) {
+  const [index, setIndex] = useState(0)
+  const [prevIndex, setPrevIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPrevIndex(index)
+      setIndex(i => (i + 1) % words.length)
+    }, interval)
+    return () => clearInterval(id)
+  }, [index, words.length, interval])
+
+  const longest = useMemo(
+    () => words.reduce((a, b) => a.length > b.length ? a : b, ''),
+    [words],
+  )
+
+  return (
+    <span className="sh-word-flip" style={{
+      height: '1.15em',
+      lineHeight: 'inherit',
+      color: '#2563eb',
+    }}>
+      {/* Invisible sizer — extra padding prevents period clipping */}
+      <span style={{ visibility: 'hidden' }}>{longest}<span style={{ letterSpacing: '0.05em' }}>&nbsp;</span></span>
+      {words.map((word, i) => {
+        let state = 'below'
+        if (i === index) state = 'enter'
+        else if (i === prevIndex) state = 'exit-up'
+        return (
+          <span key={word} className="sh-word-flip-item" data-state={state}>
+            {word}
+          </span>
+        )
+      })}
+    </span>
+  )
+}
+
+/* ─── Page morph animation ──────────────────────────────────────────────── */
+const diffSnapshots = [
+  {
+    competitor: 'Linear',
+    url: 'linear.app/pricing',
+    changes: [
+      { type: 'removed' as const, text: 'Free plan — up to 250 issues' },
+      { type: 'added' as const, text: 'Free plan — up to 50 issues' },
+      { type: 'unchanged' as const, text: 'Standard — $8/user/mo' },
+      { type: 'removed' as const, text: 'Plus — $12/user/mo' },
+      { type: 'added' as const, text: 'Plus — $14/user/mo' },
+      { type: 'unchanged' as const, text: 'Enterprise — custom pricing' },
+    ],
+    severity: 'CRITICAL',
+    summary: 'Free tier limit reduced, Plus plan price increase',
+  },
+  {
+    competitor: 'Notion',
+    url: 'notion.so/product',
+    changes: [
+      { type: 'unchanged' as const, text: 'Docs, wikis, and projects' },
+      { type: 'added' as const, text: 'AI-powered search across workspace' },
+      { type: 'unchanged' as const, text: 'Real-time collaboration' },
+      { type: 'added' as const, text: 'Notion Mail — unified inbox' },
+      { type: 'unchanged' as const, text: 'Custom automations' },
+      { type: 'removed' as const, text: 'API access on all plans' },
+    ],
+    severity: 'HIGH',
+    summary: 'Two features added, API access restricted',
+  },
+  {
+    competitor: 'Stripe',
+    url: 'stripe.com/docs/changelog',
+    changes: [
+      { type: 'added' as const, text: 'v2025-03 API — breaking changes' },
+      { type: 'removed' as const, text: 'Deprecated: /v1/charges endpoint' },
+      { type: 'unchanged' as const, text: 'Payment Intents API' },
+      { type: 'unchanged' as const, text: 'Billing portal' },
+      { type: 'added' as const, text: 'Embedded checkout v2' },
+      { type: 'removed' as const, text: 'Legacy webhooks sunset Mar 30' },
+    ],
+    severity: 'HIGH',
+    summary: 'API deprecation, new checkout version',
+  },
+]
+
+function PageMorph() {
+  const [activeIdx, setActiveIdx] = useState(0)
+  const [displayIdx, setDisplayIdx] = useState(0)
+  const [fading, setFading] = useState(false)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setFading(true)
+      setTimeout(() => {
+        setActiveIdx(i => (i + 1) % diffSnapshots.length)
+        setDisplayIdx(i => (i + 1) % diffSnapshots.length)
+        setFading(false)
+      }, 400)
+    }, 4000)
+    return () => clearInterval(id)
+  }, [])
+
+  const snap = diffSnapshots[displayIdx]
+  const sevColor = snap.severity === 'CRITICAL' ? '#dc2626' : '#c2410c'
+  const sevBg = snap.severity === 'CRITICAL' ? '#fef2f2' : '#fff7ed'
+
+  return (
+    <div className="sh-morph-page" style={{ width: '100%', maxWidth: 400 }}>
+      {/* Browser chrome */}
+      <div style={{
+        padding: '8px 14px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc',
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <div style={{ display: 'flex', gap: 5 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fca5a5' }} />
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fde68a' }} />
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#86efac' }} />
+        </div>
+        <div style={{
+          marginLeft: 8, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6,
+          padding: '3px 12px', fontSize: 10, color: '#94a3b8', flex: 1, maxWidth: 220,
+          transition: 'opacity 300ms ease',
+          opacity: fading ? 0 : 1,
+        }}>
+          {snap.url}
+        </div>
+      </div>
+
+      {/* Diff content */}
+      <div style={{
+        padding: '16px 18px 20px',
+        opacity: fading ? 0 : 1,
+        transform: fading ? 'translateY(4px)' : 'translateY(0)',
+        transition: 'opacity 350ms ease, transform 350ms ease',
+      }}>
+        {/* Competitor header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>
+              {snap.competitor}
+            </div>
+            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>
+              Last checked 2m ago
+            </div>
+          </div>
+          <span style={{
+            fontSize: 9, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+            background: sevBg, color: sevColor,
+          }}>
+            {snap.severity}
+          </span>
+        </div>
+
+        {/* Diff lines */}
+        <div style={{
+          background: '#fafafa', borderRadius: 8, border: '1px solid #e2e8f0',
+          padding: '8px 0', fontFamily: 'ui-monospace, "SF Mono", "Cascadia Code", monospace',
+        }}>
+          {snap.changes.map((line, i) => {
+            const colors = {
+              added: { bg: '#f0fdf4', color: '#15803d', prefix: '+' },
+              removed: { bg: '#fef2f2', color: '#b91c1c', prefix: '−', textDecoration: 'line-through' as const },
+              unchanged: { bg: 'transparent', color: '#64748b', prefix: ' ' },
+            }
+            const c = colors[line.type]
+            return (
+              <div key={i} style={{
+                fontSize: 10, lineHeight: 1.7,
+                padding: '1px 12px',
+                background: c.bg,
+                color: c.color,
+                display: 'flex', gap: 8,
+                textDecoration: line.type === 'removed' ? 'line-through' : undefined,
+              }}>
+                <span style={{ opacity: 0.6, flexShrink: 0, width: 10, textAlign: 'center' }}>{c.prefix}</span>
+                <span>{line.text}</span>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Summary bar */}
+        <div style={{
+          marginTop: 12, padding: '7px 10px',
+          background: sevBg, borderRadius: 8, border: `1px solid ${snap.severity === 'CRITICAL' ? '#fecaca' : '#fed7aa'}`,
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 9, fontWeight: 600, color: sevColor,
+        }}>
+          <div style={{
+            width: 5, height: 5, borderRadius: '50%', background: sevColor,
+            animation: 'sh-pulse 2s ease-in-out infinite',
+          }} />
+          {snap.summary}
+        </div>
+      </div>
+
+      {/* Step indicators */}
+      <div style={{
+        padding: '0 18px 14px', display: 'flex', justifyContent: 'center', gap: 6,
+      }}>
+        {diffSnapshots.map((_, i) => (
+          <div key={i} style={{
+            width: i === activeIdx ? 16 : 5, height: 5, borderRadius: 3,
+            background: i === activeIdx ? '#2563eb' : '#e2e8f0',
+            transition: 'width 300ms ease, background 300ms ease',
+          }} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -402,23 +687,23 @@ function DashboardMockup() {
    ═══════════════════════════════════════════════════════════════════════════ */
 const features = [
   {
-    title: 'Automated monitoring',
-    desc: 'Track competitor pricing pages, changelogs, feature lists, and hiring pages. Shadow checks on your schedule and captures full snapshots every time.',
-    Icon: Radar,
+    title: 'Always-on monitoring',
+    desc: 'Point Shadow at any competitor page — pricing, changelogs, feature lists, docs, hiring. It watches on your schedule so nothing slips through.',
+    Icon: Eye,
     iconBg: '#eff6ff',
     iconColor: '#2563eb',
   },
   {
-    title: 'Change detection',
-    desc: 'Every captured revision is compared line-by-line. See exactly what changed, when it changed, and how significant the change was.',
-    Icon: FileText,
+    title: 'Precise diff detection',
+    desc: 'Every revision is compared line-by-line against the last snapshot. You see exactly what changed, when, and how significant it is — no noise.',
+    Icon: GitCompareArrows,
     iconBg: '#ecfdf5',
     iconColor: '#059669',
   },
   {
-    title: 'Severity-ranked alerts',
-    desc: 'Changes are classified by impact. Critical pricing shifts surface before minor copy edits. Route alerts to Slack, email, or both.',
-    Icon: Bell,
+    title: 'Instant alert routing',
+    desc: 'Changes are ranked by impact and routed to your team in seconds. Critical pricing shifts surface before minor copy tweaks. Slack, email, or both.',
+    Icon: Zap,
     iconBg: '#fffbeb',
     iconColor: '#d97706',
   },
@@ -480,7 +765,7 @@ export default function AuroraLanding() {
       {/* ── Navigation ──────────────────────────────────────────────── */}
       <nav style={{ width: '100%', ...stagger(0, 0) }}>
         <div style={{
-          ...section(), padding: '20px 24px',
+          width: '100%', padding: '20px 40px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -503,50 +788,61 @@ export default function AuroraLanding() {
 
       {/* ── Hero ────────────────────────────────────────────────────── */}
       <section style={section({ paddingTop: 64, paddingBottom: 48 })}>
-        <div style={{ maxWidth: 620, margin: '0 auto', textAlign: 'center' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: 100,
-            padding: '6px 16px', fontSize: 13, fontWeight: 600, color: '#2563eb',
-            ...stagger(0),
-          }}>
-            <ShieldCheck size={14} />
-            Competitor intelligence for product teams
+        <div className="sh-hero-grid" style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'center',
+        }}>
+          {/* Left — text */}
+          <div className="sh-hero-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: 100,
+              padding: '6px 16px', fontSize: 13, fontWeight: 600, color: '#2563eb',
+              ...stagger(0),
+            }}>
+              <ShieldCheck size={14} />
+              Competitor intelligence for product teams
+            </div>
+
+            <h1 style={{
+              marginTop: 24,
+              fontSize: 'clamp(32px, 4vw, 50px)',
+              fontWeight: 700,
+              lineHeight: 1.15,
+              letterSpacing: '-0.035em',
+              color: '#0f172a',
+              ...stagger(1),
+            }}>
+              Track competitor{' '}
+              <FlipWords words={['pricing.', 'launches.', 'signals.', 'moves.', 'strategy.']} />
+              <br />Act on what matters.
+            </h1>
+
+            <p style={{
+              marginTop: 20, fontSize: 16, lineHeight: 1.65, color: '#64748b', maxWidth: 440,
+              ...stagger(2),
+            }}>
+              Shadow monitors competitor pages, captures every revision, detects changes, and routes severity-ranked alerts to your team.
+            </p>
+
+            <div className="sh-hero-ctas" style={{
+              marginTop: 32, display: 'flex', alignItems: 'center', gap: 12,
+              ...stagger(3),
+            }}>
+              <Link to="/register" className="sh-btn sh-btn-dark" style={{ fontSize: 15, padding: '14px 28px' }}>
+                Start monitoring <ArrowRight size={16} />
+              </Link>
+              <Link to="/login" className="sh-btn sh-btn-outline" style={{ fontSize: 15, padding: '14px 24px' }}>
+                Sign in
+              </Link>
+            </div>
           </div>
 
-          <h1 style={{
-            marginTop: 24,
-            fontSize: 'clamp(36px, 5vw, 56px)',
-            fontWeight: 700,
-            lineHeight: 1.08,
-            letterSpacing: '-0.035em',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #2563eb 100%)',
-            backgroundSize: '200% 200%',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            animation: 'sh-gradient-drift 8s ease-in-out infinite',
-            ...stagger(1),
+          {/* Right — morphing page animation */}
+          <div className="sh-hero-morph" style={{
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            ...stagger(2, 200),
           }}>
-            Track competitor changes. Act on what matters.
-          </h1>
-
-          <p style={{
-            marginTop: 20, fontSize: 17, lineHeight: 1.65, color: '#64748b', maxWidth: 480, margin: '20px auto 0',
-            ...stagger(2),
-          }}>
-            Shadow monitors competitor pages, captures every revision, detects changes, and routes severity-ranked alerts to your team.
-          </p>
-
-          <div className="sh-hero-ctas" style={{
-            marginTop: 32, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12,
-            ...stagger(3),
-          }}>
-            <Link to="/register" className="sh-btn sh-btn-dark" style={{ fontSize: 15, padding: '14px 28px' }}>
-              Start monitoring <ArrowRight size={16} />
-            </Link>
-            <Link to="/login" className="sh-btn sh-btn-outline" style={{ fontSize: 15, padding: '14px 24px' }}>
-              Sign in
-            </Link>
+            <PageMorph />
           </div>
         </div>
       </section>
