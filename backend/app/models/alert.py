@@ -28,8 +28,12 @@ class Alert(UUIDMixin, Base):
     notified_via_email: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notification_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cluster_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("alert_clusters.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships
     monitor = relationship("Monitor", back_populates="alerts")
     user = relationship("User", back_populates="alerts")
+    cluster = relationship("AlertCluster", back_populates="alerts")
