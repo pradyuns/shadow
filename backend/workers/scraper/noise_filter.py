@@ -13,7 +13,7 @@ removed only if ALL its changed lines are noise.
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import structlog
 
@@ -51,8 +51,31 @@ GLOBAL_NOISE_PATTERNS = [
     r"__cf_bm=",  # Cloudflare bot management
 ]
 
+@dataclass(frozen=True)
+class CompiledNoisePattern:
+    regex: re.Pattern
+    source: str
+    pattern: str
+
+
+def _compile_patterns(patterns: list[str], source: str) -> list[CompiledNoisePattern]:
+    compiled: list[CompiledNoisePattern] = []
+    for pattern in patterns:
+        try:
+            compiled.append(
+                CompiledNoisePattern(
+                    regex=re.compile(pattern, re.IGNORECASE),
+                    source=source,
+                    pattern=pattern,
+                )
+            )
+        except re.error:
+            logger.warning("invalid_noise_pattern_skipped", pattern=pattern, source=source)
+    return compiled
+
+
 # Pre-compile for performance — these run on every diff line
-_compiled_global = [re.compile(p, re.IGNORECASE) for p in GLOBAL_NOISE_PATTERNS]
+_compiled_global = _compile_patterns(GLOBAL_NOISE_PATTERNS, source="global")
 
 
 @dataclass
@@ -63,32 +86,59 @@ class FilterResult:
     original_lines: int
     noise_lines_removed: int
     is_empty_after_filter: bool
+    learned_noise_lines_removed: int = 0
+    learned_pattern_hits: dict[str, int] = field(default_factory=dict)
 
 
-def _is_noise_line(line: str, compiled_patterns: list[re.Pattern]) -> bool:
+def _classify_noise_line(line: str, compiled_patterns: list[CompiledNoisePattern | re.Pattern]) -> tuple[bool, set[str]]:
     """Check if a diff line's content is entirely explained by noise patterns.
 
     A line is noise if removing all noise-pattern matches leaves only whitespace
     or very short content (<5 chars). This prevents false positives where a
     genuinely changed line happens to contain a timestamp alongside real content.
     """
-    cleaned = line
-    for pattern in compiled_patterns:
-        cleaned = pattern.sub("", cleaned)
+    if line.startswith("+") or line.startswith("-"):
+        cleaned = line[1:]
+    else:
+        cleaned = line
+    matched_learned_patterns: set[str] = set()
+    for pattern_entry in compiled_patterns:
+        if isinstance(pattern_entry, CompiledNoisePattern):
+            pattern = pattern_entry.regex
+            source = pattern_entry.source
+            raw_pattern = pattern_entry.pattern
+        else:
+            pattern = pattern_entry
+            source = "legacy"
+            raw_pattern = pattern.pattern
+
+        updated = pattern.sub("", cleaned)
+        if updated != cleaned and source == "learned":
+            matched_learned_patterns.add(raw_pattern)
+        cleaned = updated
 
     # Strip diff markers (+/-) and whitespace
-    cleaned = cleaned.lstrip("+-").strip()
+    cleaned = cleaned.strip()
 
     # If almost nothing meaningful remains, it's noise
-    return len(cleaned) < 5
+    return len(cleaned) < 5, matched_learned_patterns
 
 
-def filter_diff(unified_diff: str, monitor_noise_patterns: list[str] | None = None) -> FilterResult:
+def _is_noise_line(line: str, compiled_patterns: list[CompiledNoisePattern | re.Pattern]) -> bool:
+    return _classify_noise_line(line, compiled_patterns)[0]
+
+
+def filter_diff(
+    unified_diff: str,
+    monitor_noise_patterns: list[str] | None = None,
+    learned_noise_patterns: list[str] | None = None,
+) -> FilterResult:
     """Filter noise from a unified diff.
 
     Args:
         unified_diff: The raw unified diff string.
         monitor_noise_patterns: Additional regex patterns specific to this monitor.
+        learned_noise_patterns: Auto-learned per-monitor patterns promoted by adaptive learning.
 
     Returns:
         FilterResult with the cleaned diff and stats.
@@ -101,19 +151,15 @@ def filter_diff(unified_diff: str, monitor_noise_patterns: list[str] | None = No
             is_empty_after_filter=True,
         )
 
-    # Compile per-monitor patterns (validated at monitor creation time, so safe here)
-    compiled_custom = []
-    for pattern_str in monitor_noise_patterns or []:
-        try:
-            compiled_custom.append(re.compile(pattern_str, re.IGNORECASE))
-        except re.error:
-            logger.warning("invalid_noise_pattern_skipped", pattern=pattern_str)
-
-    all_patterns = _compiled_global + compiled_custom
+    compiled_custom = _compile_patterns(monitor_noise_patterns or [], source="monitor")
+    compiled_learned = _compile_patterns(learned_noise_patterns or [], source="learned")
+    all_patterns: list[CompiledNoisePattern] = _compiled_global + compiled_custom + compiled_learned
 
     lines = unified_diff.split("\n")
     filtered_lines = []
     noise_count = 0
+    learned_noise_count = 0
+    learned_hits: dict[str, int] = {}
     total_changed = 0
 
     # Process the diff preserving hunk structure.
@@ -132,8 +178,13 @@ def filter_diff(unified_diff: str, monitor_noise_patterns: list[str] | None = No
         # Changed lines: check if noise
         if line.startswith("+") or line.startswith("-"):
             total_changed += 1
-            if _is_noise_line(line, all_patterns):
+            is_noise, matched_learned_patterns = _classify_noise_line(line, all_patterns)
+            if is_noise:
                 noise_count += 1
+                if matched_learned_patterns:
+                    learned_noise_count += 1
+                    for matched in matched_learned_patterns:
+                        learned_hits[matched] = learned_hits.get(matched, 0) + 1
                 i += 1
                 continue
 
@@ -157,6 +208,8 @@ def filter_diff(unified_diff: str, monitor_noise_patterns: list[str] | None = No
         original_lines=total_changed,
         noise_lines_removed=noise_count,
         is_empty_after_filter=not has_changes,
+        learned_noise_lines_removed=learned_noise_count,
+        learned_pattern_hits=learned_hits,
     )
 
 

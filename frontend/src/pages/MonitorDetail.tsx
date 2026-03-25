@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Bell,
-  CheckCircle2,
   Clock3,
   ExternalLink,
   FileText,
@@ -15,17 +14,18 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import api from '../lib/api'
-import type { Alert, Diff, Monitor, Snapshot } from '../lib/types'
+import type { Alert, Diff, Monitor, MonitorNoiseLearning, Snapshot } from '../lib/types'
 import { SEVERITY_COLORS, alertTitle, type SeverityLevel } from '../lib/types'
 
-type Tab = 'alerts' | 'snapshots' | 'diffs'
+type Tab = 'alerts' | 'snapshots' | 'diffs' | 'noise'
 
 async function fetchMonitorDetail(id: string) {
-  const [monitorResponse, alertResponse, snapshotResponse, diffResponse] = await Promise.all([
+  const [monitorResponse, alertResponse, snapshotResponse, diffResponse, noiseResponse] = await Promise.all([
     api.get(`/monitors/${id}`).catch(() => ({ data: null })),
     api.get(`/alerts?monitor_id=${id}&per_page=20`).catch(() => ({ data: [] })),
     api.get(`/monitors/${id}/snapshots?per_page=10`).catch(() => ({ data: [] })),
     api.get(`/monitors/${id}/diffs?per_page=10`).catch(() => ({ data: [] })),
+    api.get(`/monitors/${id}/noise-learning`).catch(() => ({ data: null })),
   ])
 
   return {
@@ -35,6 +35,7 @@ async function fetchMonitorDetail(id: string) {
       ? snapshotResponse.data
       : snapshotResponse.data.items || [],
     diffs: Array.isArray(diffResponse.data) ? diffResponse.data : diffResponse.data.items || [],
+    noiseLearning: noiseResponse.data as MonitorNoiseLearning | null,
   }
 }
 
@@ -62,6 +63,7 @@ export default function MonitorDetail() {
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [diffs, setDiffs] = useState<Diff[]>([])
+  const [noiseLearning, setNoiseLearning] = useState<MonitorNoiseLearning | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('alerts')
   const [triggering, setTriggering] = useState(false)
@@ -76,6 +78,7 @@ export default function MonitorDetail() {
       setAlerts(data.alerts)
       setSnapshots(data.snapshots)
       setDiffs(data.diffs)
+      setNoiseLearning(data.noiseLearning)
       setLoading(false)
     })
   }, [id])
@@ -149,6 +152,7 @@ export default function MonitorDetail() {
     { key: 'alerts', label: 'Alerts', icon: Bell, count: alerts.length },
     { key: 'snapshots', label: 'Snapshots', icon: FileText, count: snapshots.length },
     { key: 'diffs', label: 'Diffs', icon: GitCompare, count: diffs.length },
+    { key: 'noise', label: 'Adaptive noise', icon: ShieldCheck, count: noiseLearning?.active_patterns || 0 },
   ]
 
   return (
@@ -321,18 +325,29 @@ export default function MonitorDetail() {
           </div>
 
           <div className="panel p-6">
-            <div className="text-lg font-semibold text-slate-950">What this view improves</div>
+            <div className="text-lg font-semibold text-slate-950">Adaptive filter impact</div>
             <div className="mt-5 space-y-3">
-              {[
-                'State, cadence, and scrape health are visible before diving into tabs.',
-                'Manual scrape actions give feedback instead of silently doing nothing.',
-                'Snapshots, alerts, and diffs stay together around one monitor record.',
-              ].map((item) => (
-                <div key={item} className="flex items-start gap-3 text-sm leading-7 text-slate-600">
-                  <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-emerald-600" />
-                  <span>{item}</span>
+              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-950">Learned patterns</div>
+                  <div className="text-xs text-slate-500">Monitor-specific templates discovered from diff history</div>
                 </div>
-              ))}
+                <div className="text-sm font-semibold text-slate-950">{noiseLearning?.learned_patterns || 0}</div>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-950">Filtered this week</div>
+                  <div className="text-xs text-slate-500">Noise lines suppressed by learned patterns</div>
+                </div>
+                <div className="text-sm font-semibold text-slate-950">{noiseLearning?.lines_filtered_7d || 0}</div>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-950">Average confidence</div>
+                  <div className="text-xs text-slate-500">Promotion confidence across learned templates</div>
+                </div>
+                <div className="text-sm font-semibold text-slate-950">{((noiseLearning?.avg_confidence || 0) * 100).toFixed(0)}%</div>
+              </div>
             </div>
           </div>
         </div>
@@ -474,6 +489,11 @@ export default function MonitorDetail() {
                             <span className="text-emerald-700">+{diff.diff_lines_added} lines added</span>
                             <span className="text-rose-700">-{diff.diff_lines_removed} lines removed</span>
                             <span>{diff.noise_lines_removed} noise lines filtered</span>
+                            {(diff.learned_noise_lines_removed || 0) > 0 && (
+                              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                                {diff.learned_noise_lines_removed} from learned patterns
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="text-right text-xs text-slate-500">
@@ -484,6 +504,86 @@ export default function MonitorDetail() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {tab === 'noise' && (
+              <>
+                {!noiseLearning || noiseLearning.learned_patterns === 0 ? (
+                  <div className="px-6 py-12 text-center">
+                    <ShieldCheck className="mx-auto h-10 w-10 text-slate-300" />
+                    <div className="mt-4 text-base font-semibold text-slate-950">No learned patterns yet</div>
+                    <div className="mt-2 text-sm text-slate-600">
+                      Adaptive learning starts after enough snapshot history is available and recurring structures are detected.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 px-6 py-5">
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Active patterns</div>
+                        <div className="mt-2 text-lg font-semibold text-slate-950">{noiseLearning.active_patterns}</div>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Manual review</div>
+                        <div className="mt-2 text-lg font-semibold text-slate-950">{noiseLearning.manual_review_patterns}</div>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Filtered this week</div>
+                        <div className="mt-2 text-lg font-semibold text-slate-950">{noiseLearning.lines_filtered_7d}</div>
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200">
+                      {noiseLearning.patterns.map((pattern) => (
+                        <div key={pattern.id} className="space-y-3 px-4 py-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                              Support {pattern.support_count}
+                            </span>
+                            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+                              Confidence {(pattern.confidence * 100).toFixed(0)}%
+                            </span>
+                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                              {pattern.lines_filtered_7d} lines/week
+                            </span>
+                            {pattern.is_active ? (
+                              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                                Active
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                Inactive
+                              </span>
+                            )}
+                            {pattern.manual_review_required && (
+                              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                                Manual review required
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="font-mono text-xs text-slate-700">{pattern.template}</div>
+                          <div className="font-mono text-xs text-slate-500 break-all">{pattern.pattern}</div>
+
+                          {pattern.blocked_reason && (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                              Safeguard block: {pattern.blocked_reason}
+                            </div>
+                          )}
+
+                          {pattern.examples.length > 0 && (
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Recent example</div>
+                              <div className="mt-1 font-mono text-xs text-rose-700">- {pattern.examples[pattern.examples.length - 1].before}</div>
+                              <div className="mt-1 font-mono text-xs text-emerald-700">+ {pattern.examples[pattern.examples.length - 1].after}</div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </>

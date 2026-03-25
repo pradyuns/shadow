@@ -59,7 +59,57 @@ export interface Diff {
   diff_lines_removed: number
   is_empty_after_filter: boolean
   noise_lines_removed: number
+  learned_noise_lines_removed?: number
+  learned_noise_pattern_hits?: Record<string, number>
   created_at: string
+}
+
+export interface LearnedPatternExample {
+  before: string
+  after: string
+  diff_id: string | null
+  seen_at: string | null
+}
+
+export interface LearnedNoisePattern {
+  id: string
+  pattern: string
+  template: string
+  support_count: number
+  confidence: number
+  decay_score: number
+  is_active: boolean
+  manual_review_required: boolean
+  blocked_reason: string | null
+  lines_filtered_7d: number
+  total_lines_filtered: number
+  first_seen_at: string | null
+  last_seen_at: string | null
+  last_matched_at: string | null
+  examples: LearnedPatternExample[]
+}
+
+export interface MonitorNoiseLearning {
+  monitor_id: string
+  monitor_name: string
+  learned_patterns: number
+  active_patterns: number
+  manual_review_patterns: number
+  lines_filtered_7d: number
+  total_lines_filtered: number
+  avg_confidence: number
+  patterns: LearnedNoisePattern[]
+}
+
+export interface NoiseLearningOverviewItem {
+  monitor_id: string
+  monitor_name: string
+  competitor_name: string | null
+  learned_patterns: number
+  active_patterns: number
+  manual_review_patterns: number
+  lines_filtered_7d: number
+  avg_confidence: number
 }
 
 export interface Analysis {
