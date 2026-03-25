@@ -34,9 +34,23 @@ export interface Alert {
   categories: string[]
   is_acknowledged: boolean
   acknowledged_at: string | null
+  cluster_id: string | null
   notified_at: string | null
   created_at: string
   monitor?: Monitor
+}
+
+export interface AlertCluster {
+  id: string
+  competitor_name: string
+  title: string
+  severity: SeverityLevel
+  alert_count: number
+  categories: string[]
+  is_resolved: boolean
+  created_at: string
+  updated_at: string
+  alerts?: Alert[]
 }
 
 export interface Snapshot {

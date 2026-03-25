@@ -19,6 +19,7 @@ class AlertRead(BaseModel):
     summary: str
     categories: list
     is_acknowledged: bool
+    cluster_id: uuid.UUID | None = None
     notified_at: datetime | None
     created_at: datetime
 
@@ -33,3 +34,22 @@ class AlertDetail(AlertRead):
     notified_via_slack: bool
     notified_via_email: bool
     notification_error: str | None
+
+
+class ClusterRead(BaseModel):
+    id: uuid.UUID
+    competitor_name: str
+    title: str
+    severity: str
+    alert_count: int
+    categories: list
+    is_resolved: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ClusterDetail(ClusterRead):
+    alerts: list[AlertRead] = []
+    resolved_at: datetime | None = None
