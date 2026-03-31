@@ -39,7 +39,12 @@ class TestUpsertSetting:
         result.scalar_one_or_none.return_value = None
         db.execute.return_value = result
 
-        await upsert_setting(db, uuid.uuid4(), "slack", {"is_enabled": True})
+        await upsert_setting(
+            db,
+            uuid.uuid4(),
+            "slack",
+            {"is_enabled": True, "slack_webhook_url": "https://hooks.slack.com/test"},
+        )
         db.add.assert_called_once()
         db.commit.assert_called_once()
 

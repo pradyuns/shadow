@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.alert import AlertDetail, AlertRead, Severity
-from app.schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, TokenPair
+from app.schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, SessionResponse
 from app.schemas.monitor import MonitorCreate, MonitorRead, MonitorUpdate, PageType
 from app.schemas.notification import Channel, NotificationSettingRead, NotificationSettingUpdate
 from workers.classifier.schemas import (
@@ -47,9 +47,10 @@ class TestAuthSchemas:
         req = RefreshRequest(refresh_token="some-token")
         assert req.refresh_token == "some-token"
 
-    def test_token_pair(self):
-        tp = TokenPair(access_token="a", refresh_token="b", expires_in=1800)
-        assert tp.token_type == "bearer"
+    def test_session_response(self):
+        session = SessionResponse(status="authenticated", expires_in=1800)
+        assert session.status == "authenticated"
+        assert session.expires_in == 1800
 
 
 class TestMonitorSchemas:

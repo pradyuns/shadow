@@ -76,17 +76,84 @@ W_CATEGORY = 0.30
 W_KEYWORD = 0.30
 
 # Stop words for keyword extraction — common words that don't carry signal
-STOP_WORDS = frozenset({
-    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-    "have", "has", "had", "do", "does", "did", "will", "would", "could",
-    "should", "may", "might", "shall", "can", "to", "of", "in", "for",
-    "on", "with", "at", "by", "from", "as", "into", "through", "during",
-    "before", "after", "above", "below", "between", "out", "off", "over",
-    "under", "again", "further", "then", "once", "and", "but", "or", "nor",
-    "not", "no", "so", "if", "than", "too", "very", "just", "about",
-    "change", "changed", "changes", "detected", "updated", "update",
-    "page", "new", "now", "added", "removed",
-})
+STOP_WORDS = frozenset(
+    {
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "shall",
+        "can",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "out",
+        "off",
+        "over",
+        "under",
+        "again",
+        "further",
+        "then",
+        "once",
+        "and",
+        "but",
+        "or",
+        "nor",
+        "not",
+        "no",
+        "so",
+        "if",
+        "than",
+        "too",
+        "very",
+        "just",
+        "about",
+        "change",
+        "changed",
+        "changes",
+        "detected",
+        "updated",
+        "update",
+        "page",
+        "new",
+        "now",
+        "added",
+        "removed",
+    }
+)
 
 
 def _extract_keywords(text: str) -> set[str]:
@@ -189,9 +256,7 @@ def assign_to_cluster(db: Session, alert) -> uuid.UUID | None:
 
     try:
         # Load monitor for competitor_name
-        monitor = db.execute(
-            select(Monitor).where(Monitor.id == alert.monitor_id)
-        ).scalar_one_or_none()
+        monitor = db.execute(select(Monitor).where(Monitor.id == alert.monitor_id)).scalar_one_or_none()
 
         if not monitor:
             logger.warning("cluster_monitor_not_found", alert_id=str(alert.id))
@@ -221,16 +286,20 @@ def assign_to_cluster(db: Session, alert) -> uuid.UUID | None:
         # FOR UPDATE prevents concurrent reads from getting stale alert_count/severity
         # while we decide whether to merge.
         cutoff = datetime.now(timezone.utc) - timedelta(hours=CLUSTER_WINDOW_HOURS)
-        candidates = db.execute(
-            select(AlertCluster)
-            .where(
-                AlertCluster.user_id == alert.user_id,
-                AlertCluster.competitor_name == competitor,
-                AlertCluster.is_resolved == False,
-                AlertCluster.updated_at >= cutoff,
+        candidates = (
+            db.execute(
+                select(AlertCluster)
+                .where(
+                    AlertCluster.user_id == alert.user_id,
+                    AlertCluster.competitor_name == competitor,
+                    AlertCluster.is_resolved == False,
+                    AlertCluster.updated_at >= cutoff,
+                )
+                .with_for_update()
             )
-            .with_for_update()
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         best_cluster = None
         best_score = 0.0
@@ -242,8 +311,12 @@ def assign_to_cluster(db: Session, alert) -> uuid.UUID | None:
             cluster_time = cluster.updated_at
 
             scores = compute_similarity(
-                alert_categories, alert_keywords, alert_time,
-                cluster_categories, cluster_keywords, cluster_time,
+                alert_categories,
+                alert_keywords,
+                alert_time,
+                cluster_categories,
+                cluster_keywords,
+                cluster_time,
             )
 
             if scores["combined"] > best_score:
@@ -254,12 +327,8 @@ def assign_to_cluster(db: Session, alert) -> uuid.UUID | None:
         if best_cluster and best_score >= MERGE_THRESHOLD:
             # ── Merge into existing cluster ──────────────────────────────
             best_cluster.alert_count += 1
-            best_cluster.categories = list(
-                set(best_cluster.categories or []) | alert_categories
-            )
-            best_cluster.summary_keywords = list(
-                set(best_cluster.summary_keywords or []) | alert_keywords
-            )
+            best_cluster.categories = list(set(best_cluster.categories or []) | alert_categories)
+            best_cluster.summary_keywords = list(set(best_cluster.summary_keywords or []) | alert_keywords)
             # Escalate severity if new alert is higher
             if SEVERITY_ORDER.get(alert.severity, 0) > SEVERITY_ORDER.get(best_cluster.severity, 0):
                 best_cluster.severity = alert.severity

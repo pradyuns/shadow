@@ -159,7 +159,9 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
                     recorded_at=diff_doc["created_at"],
                 )
             except Exception:
-                logger.warning("adaptive_noise_usage_record_failed", monitor_id=monitor_id, diff_id=diff_id, exc_info=True)
+                logger.warning(
+                    "adaptive_noise_usage_record_failed", monitor_id=monitor_id, diff_id=diff_id, exc_info=True
+                )
 
         if monitor:
             try:

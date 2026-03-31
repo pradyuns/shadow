@@ -163,8 +163,9 @@ class TestLoginEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert "access_token" in data
-        assert data["token_type"] == "bearer"
+        assert data["status"] == "authenticated"
+        assert data["expires_in"] == 1800
+        assert "set-cookie" in response.headers
         app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
@@ -221,7 +222,9 @@ class TestRefreshEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["access_token"] == "new-access"
+        assert data["status"] == "authenticated"
+        assert data["expires_in"] == 1800
+        assert "set-cookie" in response.headers
         app.dependency_overrides.clear()
 
     @pytest.mark.asyncio

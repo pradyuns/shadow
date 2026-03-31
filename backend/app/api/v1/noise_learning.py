@@ -96,10 +96,7 @@ async def get_noise_learning_overview(
         return pagination.paginate([], 0)
 
     monitor_ids = [str(row.id) for row in monitor_rows]
-    monitor_lookup = {
-        str(row.id): {"name": row.name, "competitor_name": row.competitor_name}
-        for row in monitor_rows
-    }
+    monitor_lookup = {str(row.id): {"name": row.name, "competitor_name": row.competitor_name} for row in monitor_rows}
 
     mongo_db = get_mongo_db()
     collection = mongo_db[LEARNED_PATTERNS_COLLECTION]
@@ -147,4 +144,3 @@ async def get_noise_learning_overview(
     start = pagination.offset
     end = start + pagination.per_page
     return pagination.paginate(items[start:end], total)
-

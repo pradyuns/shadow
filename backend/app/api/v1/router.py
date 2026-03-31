@@ -9,7 +9,6 @@ from app.api.v1 import (
     monitors,
     noise_learning,
     notifications,
-    public_stats,
     snapshots,
     users,
 )
@@ -26,4 +25,3 @@ api_router.include_router(diffs.router)
 api_router.include_router(noise_learning.router)
 api_router.include_router(notifications.router)
 api_router.include_router(admin.router)
-api_router.include_router(public_stats.router)

@@ -19,7 +19,6 @@ from workers.clustering.alert_clusterer import (
     compute_similarity,
 )
 
-
 # ── Keyword extraction ───────────────────────────────────────────────────────
 
 
@@ -137,10 +136,7 @@ class TestTemporalSimilarity:
     def test_monotonic_decay(self):
         """Closer times should always score higher."""
         now = datetime.now(timezone.utc)
-        scores = [
-            _temporal_similarity(now, now + timedelta(hours=h))
-            for h in [0, 1, 2, 4, 8, 16, 24]
-        ]
+        scores = [_temporal_similarity(now, now + timedelta(hours=h)) for h in [0, 1, 2, 4, 8, 16, 24]]
         for i in range(len(scores) - 1):
             assert scores[i] > scores[i + 1]
 
@@ -162,9 +158,11 @@ class TestComputeSimilarity:
         """Different competitor events should score very low."""
         now = datetime.now(timezone.utc)
         scores = compute_similarity(
-            {"pricing_change"}, {"stripe", "tier", "pricing"},
+            {"pricing_change"},
+            {"stripe", "tier", "pricing"},
             now,
-            {"hiring_signal"}, {"engineer", "backend", "remote"},
+            {"hiring_signal"},
+            {"engineer", "backend", "remote"},
             now + timedelta(hours=20),
         )
         # temporal is very low (20h apart), categories disjoint, keywords disjoint
@@ -174,9 +172,11 @@ class TestComputeSimilarity:
         """Same-time changes on different pages of same competitor should cluster."""
         now = datetime.now(timezone.utc)
         scores = compute_similarity(
-            {"pricing_change"}, {"enterprise", "plan", "annual"},
+            {"pricing_change"},
+            {"enterprise", "plan", "annual"},
             now,
-            {"feature_launch"}, {"enterprise", "dashboard", "analytics"},
+            {"feature_launch"},
+            {"enterprise", "dashboard", "analytics"},
             now + timedelta(minutes=30),
         )
         # Temporal high at 30min with 4h half-life:
@@ -189,9 +189,11 @@ class TestComputeSimilarity:
         """Same category change 2 hours later should still have decent score."""
         now = datetime.now(timezone.utc)
         scores = compute_similarity(
-            {"pricing_change"}, {"tier", "starter", "monthly"},
+            {"pricing_change"},
+            {"tier", "starter", "monthly"},
             now,
-            {"pricing_change"}, {"tier", "business", "annual"},
+            {"pricing_change"},
+            {"tier", "business", "annual"},
             now + timedelta(hours=2),
         )
         # temporal = 2^(-2/4) = 2^(-0.5) ≈ 0.707
@@ -207,9 +209,11 @@ class TestComputeSimilarity:
         """
         now = datetime.now(timezone.utc)
         scores = compute_similarity(
-            {"pricing_change"}, {"starter", "monthly"},
+            {"pricing_change"},
+            {"starter", "monthly"},
             now,
-            {"pricing_change"}, {"enterprise", "annual"},
+            {"pricing_change"},
+            {"enterprise", "annual"},
             now + timedelta(hours=TEMPORAL_HALF_LIFE),
         )
         assert scores["temporal"] == pytest.approx(0.5, abs=0.01)
@@ -219,6 +223,7 @@ class TestComputeSimilarity:
     def test_weights_sum_to_one(self):
         """Verify weight constants are valid."""
         from workers.clustering.alert_clusterer import W_CATEGORY, W_KEYWORD, W_TEMPORAL
+
         assert W_TEMPORAL + W_CATEGORY + W_KEYWORD == pytest.approx(1.0)
 
 
@@ -233,9 +238,11 @@ class TestThresholdBehavior:
         """A competitor updating 3 pages in 1 hour should cluster."""
         now = datetime.now(timezone.utc)
         scores = compute_similarity(
-            {"pricing_change"}, {"enterprise", "pricing", "tier"},
+            {"pricing_change"},
+            {"enterprise", "pricing", "tier"},
             now,
-            {"feature_launch"}, {"enterprise", "dashboard"},
+            {"feature_launch"},
+            {"enterprise", "dashboard"},
             now + timedelta(minutes=45),
         )
         # temporal = 2^(-0.75/4) ≈ 0.878, keyword overlap on "enterprise", no category overlap
@@ -251,9 +258,11 @@ class TestThresholdBehavior:
         """
         now = datetime.now(timezone.utc)
         scores = compute_similarity(
-            {"pricing_change"}, {"stripe", "tier", "pricing"},
+            {"pricing_change"},
+            {"stripe", "tier", "pricing"},
             now,
-            {"pricing_change"}, {"stripe", "tier", "pricing"},
+            {"pricing_change"},
+            {"stripe", "tier", "pricing"},
             now + timedelta(days=5),
         )
         # 2^(-120/4) = 2^(-30) ≈ 9.3e-10

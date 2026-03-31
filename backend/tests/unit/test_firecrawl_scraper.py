@@ -42,9 +42,7 @@ class TestFirecrawlScraper:
 
         mock_client = MagicMock()
         mock_firecrawl_cls.return_value = mock_client
-        mock_client.scrape.return_value = _mock_document(
-            html="<html><body>Real content</body></html>"
-        )
+        mock_client.scrape.return_value = _mock_document(html="<html><body>Real content</body></html>")
 
         scraper = FirecrawlScraper(api_key="fc-test-key")
         result = scraper.fetch("https://example.com")
@@ -70,9 +68,7 @@ class TestFirecrawlScraper:
         mock_client = MagicMock()
         mock_firecrawl_cls.return_value = mock_client
         # No HTML returned, but markdown is available
-        mock_client.scrape.return_value = _mock_document(
-            html="", markdown="# Hello World\nSome content"
-        )
+        mock_client.scrape.return_value = _mock_document(html="", markdown="# Hello World\nSome content")
 
         scraper = FirecrawlScraper(api_key="fc-test-key")
         result = scraper.fetch("https://example.com")
@@ -440,9 +436,7 @@ class TestScrapeSingleUrlFirecrawlFallback:
     @patch("workers.scraper.factory.get_scraper")
     @patch("app.db.mongodb_sync.get_sync_mongo_db")
     @patch("app.db.postgres_sync.get_sync_db")
-    def test_primary_error_fallback_to_firecrawl(
-        self, mock_pg, mock_mongo, mock_get_scraper, mock_get_firecrawl
-    ):
+    def test_primary_error_fallback_to_firecrawl(self, mock_pg, mock_mongo, mock_get_scraper, mock_get_firecrawl):
         """When primary scraper raises ScraperError, Firecrawl is tried as fallback."""
         from workers.tasks.scraping import scrape_single_url
 
@@ -480,8 +474,10 @@ class TestScrapeSingleUrlFirecrawlFallback:
         firecrawl_result.fetch_duration_ms = 1000
         firecrawl_scraper.fetch.return_value = firecrawl_result
 
-        with patch("workers.scraper.text_extractor.extract_text") as mock_extract, \
-             patch("workers.tasks.diffing.compute_diff"):
+        with (
+            patch("workers.scraper.text_extractor.extract_text") as mock_extract,
+            patch("workers.tasks.diffing.compute_diff"),
+        ):
             mock_extract.return_value = {
                 "extracted_text": "Real content",
                 "text_hash": "real-hash",
