@@ -57,7 +57,7 @@ class MonitorRead(BaseModel):
     last_snapshot_id: str | None
     last_change_at: datetime | None
     consecutive_failures: int
-    noise_patterns: list
+    noise_patterns: list[str]
     css_selector: str | None
     created_at: datetime
     updated_at: datetime

@@ -19,9 +19,15 @@ logger = structlog.get_logger()
 # Rotate user agents to reduce bot detection.
 # A single static UA would be fingerprinted quickly by WAFs.
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ),
+    ("Mozilla/5.0 (X11; Linux x86_64) " "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
 ]
 
 _ua_index = 0
@@ -37,7 +43,7 @@ def _get_user_agent() -> str:
 class HttpScraper(BaseScraper):
     """Lightweight HTTP scraper for static pages."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._client = httpx.Client(
             follow_redirects=True,
             max_redirects=5,
@@ -105,5 +111,5 @@ class HttpScraper(BaseScraper):
             logger.error("http_scrape_unexpected_error", url=url, error=str(e), exc_info=True)
             raise ScraperError(f"Unexpected error fetching {url}: {e}", url=url, is_retryable=True)
 
-    def close(self):
+    def close(self) -> None:
         self._client.close()

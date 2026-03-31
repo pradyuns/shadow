@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +21,7 @@ async def list_all(
     competitor_name: str | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     clusters, total = await list_clusters(
         db,
         user.id,
@@ -40,11 +41,11 @@ async def get_one(
     cluster_id: uuid.UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> ClusterDetail:
     cluster = await get_cluster(db, cluster_id, user.id)
     if not cluster:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cluster not found")
-    return cluster
+    return ClusterDetail.model_validate(cluster)
 
 
 @router.patch("/{cluster_id}/resolve", response_model=ClusterDetail)
@@ -52,9 +53,9 @@ async def resolve(
     cluster_id: uuid.UUID,
     user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> ClusterDetail:
     cluster = await get_cluster(db, cluster_id, user.id)
     if not cluster:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cluster not found")
     cluster = await resolve_cluster(db, cluster)
-    return cluster
+    return ClusterDetail.model_validate(cluster)

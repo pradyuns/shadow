@@ -83,11 +83,11 @@ def compute_text_diff(
     unified_diff = "".join(diff_lines)
 
     # Count added/removed lines
-    lines_added = sum(1 for l in diff_lines if l.startswith("+") and not l.startswith("+++"))
-    lines_removed = sum(1 for l in diff_lines if l.startswith("-") and not l.startswith("---"))
+    lines_added = sum(1 for line in diff_lines if line.startswith("+") and not line.startswith("+++"))
+    lines_removed = sum(1 for line in diff_lines if line.startswith("-") and not line.startswith("---"))
 
     # Count hunks (sections starting with @@)
-    changed_hunks = sum(1 for l in diff_lines if l.startswith("@@"))
+    changed_hunks = sum(1 for line in diff_lines if line.startswith("@@"))
 
     logger.info(
         "diff_computed",

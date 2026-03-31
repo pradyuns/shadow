@@ -13,6 +13,8 @@ Why webhooks over Slack API:
 - Sufficient for alert-only use case (no conversations/reactions needed)
 """
 
+from typing import Any
+
 import httpx
 import structlog
 
@@ -32,10 +34,10 @@ SEVERITY_EMOJI = {
 class SlackNotifier(BaseNotifier):
     """Send notifications via Slack webhook."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._client = httpx.Client(timeout=10.0)
 
-    def send(self, payload: NotificationPayload, **channel_config) -> bool:
+    def send(self, payload: NotificationPayload, **channel_config: Any) -> bool:
         webhook_url = channel_config.get("slack_webhook_url")
         if not webhook_url:
             raise NotifierError("No Slack webhook URL configured", channel="slack", is_retryable=False)
@@ -113,7 +115,7 @@ class SlackNotifier(BaseNotifier):
         except httpx.ConnectError as e:
             raise NotifierError(f"Slack webhook connection error: {e}", channel="slack", is_retryable=True)
 
-    def send_test(self, **channel_config) -> bool:
+    def send_test(self, **channel_config: Any) -> bool:
         """Send a test message to verify the webhook works."""
         test_payload = NotificationPayload(
             alert_id="test",
@@ -122,7 +124,10 @@ class SlackNotifier(BaseNotifier):
             url="https://example.com",
             page_type="homepage",
             severity="medium",
-            summary="This is a test notification from Competitor Intelligence Monitor. If you see this, Slack notifications are working correctly! 🎉",
+            summary=(
+                "This is a test notification from Competitor Intelligence Monitor. "
+                "If you see this, Slack notifications are working correctly! 🎉"
+            ),
             categories=["other"],
         )
         return self.send(test_payload, **channel_config)

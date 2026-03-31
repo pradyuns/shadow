@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +16,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 async def list_settings(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[NotificationSettingRead]:
     settings = await get_user_settings(db, user.id)
     return [serialize_setting(setting) for setting in settings]
 
@@ -25,11 +27,11 @@ async def update_setting(
     body: NotificationSettingUpdate,
     user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> NotificationSettingRead:
     try:
         setting = await upsert_setting(db, user.id, channel.value, body.model_dump())
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return serialize_setting(setting)
 
 
@@ -38,7 +40,7 @@ async def test_notification(
     channel: Channel,
     user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     settings = await get_user_settings(db, user.id)
     channel_setting = next((s for s in settings if s.channel == channel.value), None)
     if not channel_setting or not channel_setting.is_enabled:

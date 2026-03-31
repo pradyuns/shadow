@@ -41,6 +41,7 @@ import math
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import structlog
 from sqlalchemy import select, text
@@ -166,7 +167,7 @@ def _extract_keywords(text: str) -> set[str]:
     return {t for t in tokens if len(t) > 2 and t not in STOP_WORDS}
 
 
-def _jaccard(set_a: set, set_b: set) -> float:
+def _jaccard(set_a: set[str], set_b: set[str]) -> float:
     """Jaccard similarity: |A ∩ B| / |A ∪ B|.
 
     Returns 0.0 if both sets are empty (no information = no similarity).
@@ -203,7 +204,7 @@ def compute_similarity(
     cluster_categories: set[str],
     cluster_keywords: set[str],
     cluster_time: datetime,
-) -> dict:
+) -> dict[str, float]:
     """Compute weighted similarity between an alert and a cluster.
 
     Returns dict with component scores and combined score for transparency/debugging.
@@ -232,7 +233,7 @@ def _advisory_lock_id(user_id: uuid.UUID, competitor: str) -> int:
     return int(hashlib.sha256(raw).hexdigest()[:15], 16)
 
 
-def assign_to_cluster(db: Session, alert) -> uuid.UUID | None:
+def assign_to_cluster(db: Session, alert: Any) -> uuid.UUID | None:
     """Assign an alert to an existing cluster or create a new one.
 
     This is the main entry point called from the analysis task after alert creation.
@@ -292,7 +293,7 @@ def assign_to_cluster(db: Session, alert) -> uuid.UUID | None:
                 .where(
                     AlertCluster.user_id == alert.user_id,
                     AlertCluster.competitor_name == competitor,
-                    AlertCluster.is_resolved == False,
+                    AlertCluster.is_resolved.is_(False),
                     AlertCluster.updated_at >= cutoff,
                 )
                 .with_for_update()
@@ -303,7 +304,7 @@ def assign_to_cluster(db: Session, alert) -> uuid.UUID | None:
 
         best_cluster = None
         best_score = 0.0
-        best_breakdown = None
+        best_breakdown: dict[str, float] | None = None
 
         for cluster in candidates:
             cluster_categories = set(cluster.categories or [])
@@ -336,6 +337,8 @@ def assign_to_cluster(db: Session, alert) -> uuid.UUID | None:
 
             alert.cluster_id = best_cluster.id
             db.commit()
+            if best_breakdown is None:
+                best_breakdown = {"temporal": 0.0, "category": 0.0, "keyword": 0.0}
 
             logger.info(
                 "alert_clustered_existing",

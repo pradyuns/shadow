@@ -18,6 +18,7 @@ Firecrawl fallback:
 
 import re
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import structlog
 from celery import group
@@ -49,7 +50,7 @@ def _looks_like_bot_detection(extracted_text: str) -> bool:
 
 
 @celery_app.task(name="workers.tasks.scraping.initiate_scrape_cycle", queue="default")
-def initiate_scrape_cycle(batch_size: int | None = None) -> dict:
+def initiate_scrape_cycle(batch_size: int | None = None) -> dict[str, Any]:
     """Query all active monitors due for checking and dispatch scrape tasks.
 
     Uses a Redis lock to prevent overlapping scrape cycles (e.g., if the
@@ -79,7 +80,7 @@ def initiate_scrape_cycle(batch_size: int | None = None) -> dict:
             result = db.execute(
                 select(Monitor.id)
                 .where(
-                    Monitor.is_active == True,
+                    Monitor.is_active.is_(True),
                     Monitor.deleted_at.is_(None),
                     Monitor.next_check_at <= now,
                 )
@@ -127,7 +128,7 @@ def initiate_scrape_cycle(batch_size: int | None = None) -> dict:
     time_limit=90,
     rate_limit="10/m",
 )
-def scrape_single_url(self, monitor_id: str) -> dict:
+def scrape_single_url(self: Any, monitor_id: str) -> dict[str, Any]:
     """Fetch a single URL, store snapshot in MongoDB, dispatch diff.
 
     State transitions on the monitor:
@@ -151,6 +152,7 @@ def scrape_single_url(self, monitor_id: str) -> dict:
     db = get_sync_db()
     mongo_db = get_sync_mongo_db()
 
+    monitor: Any = None
     try:
         # Load monitor
         monitor = db.execute(select(Monitor).where(Monitor.id == monitor_id)).scalar_one_or_none()
@@ -329,11 +331,12 @@ def scrape_single_url(self, monitor_id: str) -> dict:
 
     except Exception as e:
         try:
-            monitor.last_scrape_status = "failed"
-            monitor.last_scrape_error = f"Unexpected: {str(e)[:400]}"
-            monitor.consecutive_failures += 1
-            monitor.next_check_at = datetime.now(timezone.utc) + timedelta(hours=monitor.check_interval_hours)
-            db.commit()
+            if monitor is not None:
+                monitor.last_scrape_status = "failed"
+                monitor.last_scrape_error = f"Unexpected: {str(e)[:400]}"
+                monitor.consecutive_failures += 1
+                monitor.next_check_at = datetime.now(timezone.utc) + timedelta(hours=monitor.check_interval_hours)
+                db.commit()
         except Exception:
             pass
 

@@ -12,6 +12,7 @@ Key decisions:
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import structlog
 
@@ -22,7 +23,7 @@ logger = structlog.get_logger()
 
 
 @celery_app.task(name="workers.tasks.maintenance.cleanup_old_snapshots", queue="default")
-def cleanup_old_snapshots(days: int | None = None) -> dict:
+def cleanup_old_snapshots(days: int | None = None) -> dict[str, Any]:
     """Delete snapshots older than the specified number of days.
 
     Also cleans up orphaned diffs and analyses that reference deleted snapshots.
@@ -63,7 +64,7 @@ def cleanup_old_snapshots(days: int | None = None) -> dict:
 
 
 @celery_app.task(name="workers.tasks.maintenance.cleanup_deleted_monitors", queue="default")
-def cleanup_deleted_monitors() -> dict:
+def cleanup_deleted_monitors() -> dict[str, Any]:
     """Hard delete monitors that were soft-deleted more than 30 days ago.
 
     For each expired monitor:

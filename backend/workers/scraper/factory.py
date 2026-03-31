@@ -35,7 +35,7 @@ def get_scraper(render_js: bool) -> BaseScraper:
         return _http_scraper
 
 
-def get_firecrawl_scraper():
+def get_firecrawl_scraper() -> BaseScraper | None:
     """Return a FirecrawlScraper if configured, otherwise None.
 
     Returns None (instead of raising) so callers can gracefully skip

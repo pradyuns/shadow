@@ -1,7 +1,8 @@
 import uuid
+from typing import Any
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -22,7 +23,7 @@ async def list_diffs(
     has_changes: bool | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     monitor = await get_monitor(db, monitor_id, user.id)
     if not monitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monitor not found")
@@ -30,7 +31,7 @@ async def list_diffs(
     mongo_db = get_mongo_db()
     collection = mongo_db.diffs
 
-    query_filter: dict = {"monitor_id": str(monitor_id)}
+    query_filter: dict[str, Any] = {"monitor_id": str(monitor_id)}
     if has_changes is not None:
         query_filter["is_empty_after_filter"] = not has_changes
 
@@ -54,7 +55,7 @@ async def list_diffs(
 async def get_diff(
     diff_id: str,
     user: User = Depends(get_current_user),
-):
+) -> DiffDetail:
     mongo_db = get_mongo_db()
     try:
         oid = ObjectId(diff_id)

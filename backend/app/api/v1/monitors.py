@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,12 +26,12 @@ async def create(
     body: MonitorCreate,
     user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> MonitorRead:
     try:
         monitor = await create_monitor(db, user, body.model_dump())
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    return monitor
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return MonitorRead.model_validate(monitor)
 
 
 @router.get("", response_model=dict)
@@ -41,7 +42,7 @@ async def list_all(
     search: str | None = Query(default=None, max_length=255),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     monitors, total = await list_monitors(
         db,
         user.id,
@@ -62,11 +63,11 @@ async def get_one(
     monitor_id: uuid.UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> MonitorRead:
     monitor = await get_monitor(db, monitor_id, user.id)
     if not monitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monitor not found")
-    return monitor
+    return MonitorRead.model_validate(monitor)
 
 
 @router.patch("/{monitor_id}", response_model=MonitorRead)
@@ -75,15 +76,15 @@ async def update(
     body: MonitorUpdate,
     user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> MonitorRead:
     monitor = await get_monitor(db, monitor_id, user.id)
     if not monitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monitor not found")
     try:
         monitor = await update_monitor(db, monitor, body.model_dump(exclude_unset=True))
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    return monitor
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return MonitorRead.model_validate(monitor)
 
 
 @router.delete("/{monitor_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -91,7 +92,7 @@ async def delete(
     monitor_id: uuid.UUID,
     user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     monitor = await get_monitor(db, monitor_id, user.id)
     if not monitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monitor not found")
@@ -103,11 +104,11 @@ async def restore(
     monitor_id: uuid.UUID,
     user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> MonitorRead:
     monitor = await restore_monitor(db, monitor_id, user.id)
     if not monitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deleted monitor not found")
-    return monitor
+    return MonitorRead.model_validate(monitor)
 
 
 @router.post("/{monitor_id}/scrape", status_code=status.HTTP_202_ACCEPTED)
@@ -115,7 +116,7 @@ async def trigger_scrape(
     monitor_id: uuid.UUID,
     user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     monitor = await get_monitor(db, monitor_id, user.id)
     if not monitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monitor not found")

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
@@ -18,7 +19,7 @@ from app.utils.security import decode_token
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _set_session_cookies(response: Response, tokens: dict) -> None:
+def _set_session_cookies(response: Response, tokens: dict[str, Any]) -> None:
     response.set_cookie(
         key=settings.auth_access_cookie_name,
         value=tokens["access_token"],
@@ -61,11 +62,11 @@ def _clear_session_cookies(response: Response) -> None:
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> User:
     try:
         user = await register_user(db, body.email, body.password, body.full_name)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
     if settings.sendgrid_api_key:
         from workers.tasks.email_verification import send_verification_email
@@ -79,13 +80,13 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=SessionResponse)
-async def login(body: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
+async def login(body: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)) -> SessionResponse:
     user = await authenticate_user(db, body.email, body.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     tokens = create_tokens(user)
     _set_session_cookies(response, tokens)
-    return {"status": "authenticated", "expires_in": tokens["expires_in"]}
+    return SessionResponse(status="authenticated", expires_in=int(tokens["expires_in"]))
 
 
 @router.post("/refresh", response_model=SessionResponse)
@@ -94,7 +95,7 @@ async def refresh(
     response: Response,
     body: RefreshRequest | None = None,
     db: AsyncSession = Depends(get_db),
-):
+) -> SessionResponse:
     refresh_token = request.cookies.get(settings.auth_refresh_cookie_name) or (body.refresh_token if body else None)
     if not refresh_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token")
@@ -104,16 +105,16 @@ async def refresh(
         _clear_session_cookies(response)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
     _set_session_cookies(response, tokens)
-    return {"status": "authenticated", "expires_in": tokens["expires_in"]}
+    return SessionResponse(status="authenticated", expires_in=int(tokens["expires_in"]))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(response: Response):
+async def logout(response: Response) -> None:
     _clear_session_cookies(response)
 
 
 @router.get("/verify-email")
-async def verify_email(token: str = Query(...), db: AsyncSession = Depends(get_db)):
+async def verify_email(token: str = Query(...), db: AsyncSession = Depends(get_db)) -> RedirectResponse:
     payload = decode_token(token)
     if payload is None or payload.get("type") != "email_verify":
         return RedirectResponse(f"{settings.frontend_url}/login?verify_error=invalid")
@@ -127,7 +128,7 @@ async def verify_email(token: str = Query(...), db: AsyncSession = Depends(get_d
     except ValueError:
         return RedirectResponse(f"{settings.frontend_url}/login?verify_error=invalid")
 
-    result = await db.execute(select(User).where(User.id == uid, User.is_active == True))
+    result = await db.execute(select(User).where(User.id == uid, User.is_active.is_(True)))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -142,7 +143,7 @@ async def verify_email(token: str = Query(...), db: AsyncSession = Depends(get_d
 
 
 @router.post("/resend-verification", status_code=status.HTTP_202_ACCEPTED)
-async def resend_verification(user: User = Depends(get_current_user)):
+async def resend_verification(user: User = Depends(get_current_user)) -> dict[str, str]:
     if user.is_email_verified:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified")
 
