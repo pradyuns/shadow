@@ -14,6 +14,7 @@ removed only if ALL its changed lines are noise.
 
 import re
 from dataclasses import dataclass, field
+from typing import Pattern, Sequence
 
 import structlog
 
@@ -54,7 +55,7 @@ GLOBAL_NOISE_PATTERNS = [
 
 @dataclass(frozen=True)
 class CompiledNoisePattern:
-    regex: re.Pattern
+    regex: Pattern[str]
     source: str
     pattern: str
 
@@ -92,7 +93,7 @@ class FilterResult:
 
 
 def _classify_noise_line(
-    line: str, compiled_patterns: list[CompiledNoisePattern | re.Pattern]
+    line: str, compiled_patterns: Sequence[CompiledNoisePattern | Pattern[str]]
 ) -> tuple[bool, set[str]]:
     """Check if a diff line's content is entirely explained by noise patterns.
 
@@ -127,7 +128,7 @@ def _classify_noise_line(
     return len(cleaned) < 5, matched_learned_patterns
 
 
-def _is_noise_line(line: str, compiled_patterns: list[CompiledNoisePattern | re.Pattern]) -> bool:
+def _is_noise_line(line: str, compiled_patterns: Sequence[CompiledNoisePattern | Pattern[str]]) -> bool:
     return _classify_noise_line(line, compiled_patterns)[0]
 
 
@@ -201,9 +202,9 @@ def filter_diff(
 
     # Check if anything meaningful remains
     has_changes = any(
-        l.startswith("+") or l.startswith("-")
-        for l in final_lines
-        if not l.startswith("---") and not l.startswith("+++")
+        line.startswith("+") or line.startswith("-")
+        for line in final_lines
+        if not line.startswith("---") and not line.startswith("+++")
     )
 
     return FilterResult(

@@ -107,7 +107,7 @@ def _split_diff_content(line: str) -> str:
 
 
 def _escape_literal_segment(segment: str) -> str:
-    parts = []
+    parts: list[str] = []
     for chunk in re.split(r"(\s+)", segment):
         if not chunk:
             continue
@@ -250,7 +250,7 @@ def _safeguard_block_reason(before: str, after: str, competitor_name: str | None
 # exponential decay — patterns not seen recently lose relevance
 def _compute_decay_score(last_seen_at: datetime, now: datetime) -> float:
     age_days = max((now - _as_utc(last_seen_at)).total_seconds(), 0.0) / 86400.0
-    return 0.5 ** (age_days / DECAY_HALF_LIFE_DAYS)
+    return float(0.5 ** (age_days / DECAY_HALF_LIFE_DAYS))
 
 
 # weighted confidence score: 45% support ratio, 35% similarity, 20% recency

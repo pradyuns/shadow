@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import func, select
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.post("/scrape-cycle", status_code=status.HTTP_202_ACCEPTED)
-async def trigger_scrape_cycle(admin: User = Depends(get_current_admin)):
+async def trigger_scrape_cycle(admin: User = Depends(get_current_admin)) -> dict[str, Any]:
     from workers.tasks.scraping import initiate_scrape_cycle
 
     task = initiate_scrape_cycle.delay()
@@ -26,16 +27,18 @@ async def trigger_scrape_cycle(admin: User = Depends(get_current_admin)):
 async def system_stats(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     # postgres counts (sequential — single session isn't safe for concurrent use)
     user_count = (await db.execute(select(func.count(User.id)))).scalar()
     monitor_count = (await db.execute(select(func.count(Monitor.id)).where(Monitor.deleted_at.is_(None)))).scalar()
     active_monitor_count = (
-        await db.execute(select(func.count(Monitor.id)).where(Monitor.is_active == True, Monitor.deleted_at.is_(None)))
+        await db.execute(
+            select(func.count(Monitor.id)).where(Monitor.is_active.is_(True), Monitor.deleted_at.is_(None))
+        )
     ).scalar()
     alert_count = (await db.execute(select(func.count(Alert.id)))).scalar()
     unacknowledged_count = (
-        await db.execute(select(func.count(Alert.id)).where(Alert.is_acknowledged == False))
+        await db.execute(select(func.count(Alert.id)).where(Alert.is_acknowledged.is_(False)))
     ).scalar()
 
     # mongo counts run in parallel since they use independent connections

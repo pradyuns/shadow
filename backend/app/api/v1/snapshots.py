@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -21,7 +22,7 @@ async def list_snapshots(
     pagination: PaginationParams = Depends(),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     monitor = await get_monitor(db, monitor_id, user.id)
     if not monitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monitor not found")
@@ -50,7 +51,7 @@ async def get_snapshot(
     snapshot_id: str,
     include_html: bool = Query(default=False),
     user: User = Depends(get_current_user),
-):
+) -> SnapshotDetail:
     mongo_db = get_mongo_db()
     try:
         oid = ObjectId(snapshot_id)

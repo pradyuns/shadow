@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_verified_user
@@ -24,7 +25,7 @@ async def list_all(
     until: datetime | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     alerts, total = await list_alerts(
         db,
         user.id,
@@ -47,11 +48,11 @@ async def get_one(
     alert_id: uuid.UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> AlertDetail:
     alert = await get_alert(db, alert_id, user.id)
     if not alert:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
-    return alert
+    return AlertDetail.model_validate(alert)
 
 
 @router.patch("/{alert_id}/acknowledge", response_model=AlertDetail)
@@ -59,9 +60,9 @@ async def acknowledge(
     alert_id: uuid.UUID,
     user: User = Depends(require_verified_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> AlertDetail:
     alert = await get_alert(db, alert_id, user.id)
     if not alert:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
     alert = await acknowledge_alert(db, alert)
-    return alert
+    return AlertDetail.model_validate(alert)

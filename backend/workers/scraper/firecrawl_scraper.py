@@ -13,6 +13,7 @@ Usage:
 """
 
 import time
+from typing import Any
 
 import structlog
 
@@ -55,7 +56,7 @@ class FirecrawlScraper(BaseScraper):
         start_ms = time.monotonic()
 
         # Build keyword arguments for the scrape call
-        scrape_kwargs: dict = {
+        scrape_kwargs: dict[str, Any] = {
             "formats": ["html"],
             "timeout": timeout_seconds * 1000,  # Firecrawl expects milliseconds (min 1000)
             "only_main_content": True,  # Strip navs, footers, headers for cleaner content
@@ -84,7 +85,9 @@ class FirecrawlScraper(BaseScraper):
             http_status = 200
             if response.metadata:
                 meta = response.metadata if isinstance(response.metadata, dict) else response.metadata.model_dump()
-                http_status = meta.get("statusCode", meta.get("status_code", 200))
+                status_code = meta.get("statusCode", meta.get("status_code", 200))
+                if isinstance(status_code, int):
+                    http_status = status_code
 
             logger.info(
                 "firecrawl_scrape_complete",

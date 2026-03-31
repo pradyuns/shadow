@@ -10,9 +10,12 @@ Key decisions:
 """
 
 from datetime import datetime, timezone
+from typing import Any
 
 import structlog
+from pymongo.database import Database
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from workers.celery_app import celery_app
 from workers.classifier.schemas import SEVERITY_ORDER
@@ -22,13 +25,13 @@ from workers.notifier.factory import get_notifier
 logger = structlog.get_logger()
 
 
-def get_sync_db():
+def get_sync_db() -> Session:
     from app.db.postgres_sync import get_sync_db as _get_sync_db
 
     return _get_sync_db()
 
 
-def get_sync_mongo_db():
+def get_sync_mongo_db() -> Database[dict[str, Any]]:
     from app.db.mongodb_sync import get_sync_mongo_db as _get_sync_mongo_db
 
     return _get_sync_mongo_db()
@@ -41,7 +44,7 @@ def get_sync_mongo_db():
     max_retries=3,
     default_retry_delay=10,
 )
-def send_notifications(self, alert_id: str) -> dict:
+def send_notifications(self: Any, alert_id: str) -> dict[str, Any]:
     """Send notifications for an alert via all configured channels.
 
     Checks each user notification setting:
@@ -102,8 +105,8 @@ def send_notifications(self, alert_id: str) -> dict:
         alert_severity_order = SEVERITY_ORDER.get(alert.severity, 0)
         slack_sent = False
         email_sent = False
-        errors = []
-        mongo_db = None
+        errors: list[str] = []
+        mongo_db: Database[dict[str, Any]] | None = None
 
         for setting in user_settings:
             if not setting.is_enabled:
@@ -193,7 +196,7 @@ def send_notifications(self, alert_id: str) -> dict:
     max_retries=2,
     default_retry_delay=30,
 )
-def send_daily_digest() -> dict:
+def send_daily_digest() -> dict[str, Any]:
     """Aggregate pending digest items and send consolidated notifications.
 
     Runs hourly from Beat. Checks digest_queue for entries matching the
@@ -209,7 +212,7 @@ def send_daily_digest() -> dict:
 
     try:
         # Find digest entries for the current hour
-        pending_digests = list(
+        pending_digests: list[dict[str, Any]] = list(
             mongo_db.digest_queue.find(
                 {
                     "digest_hour_utc": current_hour,
@@ -221,8 +224,7 @@ def send_daily_digest() -> dict:
             return {"digests_sent": 0}
 
         # batch-load all notification settings to avoid n+1 per digest entry
-        all_pairs = [(d["user_id"], d["channel"]) for d in pending_digests]
-        all_user_ids = list({p[0] for p in all_pairs})
+        all_user_ids = list({str(d["user_id"]) for d in pending_digests})
         all_settings = list(
             db.execute(select(NotificationSetting).where(NotificationSetting.user_id.in_(all_user_ids))).scalars().all()
         )
@@ -236,8 +238,8 @@ def send_daily_digest() -> dict:
                 mongo_db.digest_queue.delete_one({"_id": digest_entry["_id"]})
                 continue
 
-            user_id = digest_entry["user_id"]
-            channel = digest_entry["channel"]
+            user_id = str(digest_entry["user_id"])
+            channel = str(digest_entry["channel"])
 
             # load alerts
             alerts = list(db.execute(select(Alert).where(Alert.id.in_(alert_ids))).scalars().all())
@@ -296,7 +298,7 @@ def send_daily_digest() -> dict:
     name="workers.tasks.notifications.send_test_notification",
     queue="analysis",
 )
-def send_test_notification(user_id: str, channel: str) -> dict:
+def send_test_notification(user_id: str, channel: str) -> dict[str, Any]:
     """Send a test notification to verify channel configuration."""
     from app.models.notification_setting import NotificationSetting
     from app.models.user import User

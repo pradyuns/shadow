@@ -50,7 +50,7 @@ def validate_url_safe(url: str) -> tuple[bool, str | None]:
             resolved_ips = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
             for family, _, _, _, sockaddr in resolved_ips:
                 ip_str = sockaddr[0]
-                if not _is_ip_safe(ip_str):
+                if isinstance(ip_str, str) and not _is_ip_safe(ip_str):
                     return False, "URL resolves to a private/reserved IP address"
         except socket.gaierror:
             return True, None

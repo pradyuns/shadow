@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -32,7 +33,7 @@ class BaseNotifier(ABC):
     """Abstract base for notification channels."""
 
     @abstractmethod
-    def send(self, payload: NotificationPayload, **channel_config) -> bool:
+    def send(self, payload: NotificationPayload, **channel_config: Any) -> bool:
         """Send a notification.
 
         Args:
@@ -48,6 +49,6 @@ class BaseNotifier(ABC):
         ...
 
     @abstractmethod
-    def send_test(self, **channel_config) -> bool:
+    def send_test(self, **channel_config: Any) -> bool:
         """Send a test notification to verify channel configuration."""
         ...

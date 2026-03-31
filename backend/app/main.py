@@ -1,12 +1,14 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import Any, cast
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from starlette.responses import Response
 
 from app.api.v1.router import api_router
 from app.config import settings
@@ -56,15 +58,14 @@ app.include_router(api_router)
 if settings.enable_metrics:
 
     @app.get("/metrics")
-    async def metrics():
+    async def metrics() -> Response:
         from prometheus_client import generate_latest
-        from starlette.responses import Response
 
         return Response(content=generate_latest(), media_type="text/plain; charset=utf-8")
 
 
 @app.get("/api/v1/health")
-async def health() -> dict:
+async def health() -> dict[str, str]:
     return {
         "status": "ok",
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -80,31 +81,28 @@ async def health_ready() -> JSONResponse:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         checks["postgres"] = "ok"
-    except Exception as e:
-        checks["postgres"] = f"error: {e}"
+    except Exception as exc:
+        checks["postgres"] = f"error: {exc}"
 
     # Check MongoDB
     try:
         db = get_mongo_db()
         await db.command("ping")
         checks["mongodb"] = "ok"
-    except Exception as e:
-        checks["mongodb"] = f"error: {e}"
+    except Exception as exc:
+        checks["mongodb"] = f"error: {exc}"
 
     # Check Redis
     try:
         redis_client = get_redis_cache()
         await redis_client.ping()
         checks["redis"] = "ok"
-    except Exception as e:
-        checks["redis"] = f"error: {e}"
+    except Exception as exc:
+        checks["redis"] = f"error: {exc}"
 
     all_ok = all(v == "ok" for v in checks.values())
 
     return JSONResponse(
         status_code=200 if all_ok else 503,
-        content={
-            "status": "ready" if all_ok else "degraded",
-            **checks,
-        },
+        content=cast(dict[str, Any], {"status": "ready" if all_ok else "degraded", **checks}),
     )

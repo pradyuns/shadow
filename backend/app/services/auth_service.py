@@ -1,3 +1,6 @@
+import uuid
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,15 +33,15 @@ async def register_user(db: AsyncSession, email: str, password: str, full_name: 
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User | None:
-    result = await db.execute(select(User).where(User.email == email, User.is_active == True))
+    result = await db.execute(select(User).where(User.email == email, User.is_active.is_(True)))
     user = result.scalar_one_or_none()
     if not user or not verify_password(password, user.password_hash):
         return None
     return user
 
 
-def create_tokens(user: User) -> dict:
-    token_data = {"sub": str(user.id)}
+def create_tokens(user: User) -> dict[str, Any]:
+    token_data: dict[str, Any] = {"sub": str(user.id)}
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
     return {
@@ -49,7 +52,7 @@ def create_tokens(user: User) -> dict:
     }
 
 
-async def refresh_tokens(db: AsyncSession, refresh_token_str: str) -> dict | None:
+async def refresh_tokens(db: AsyncSession, refresh_token_str: str) -> dict[str, Any] | None:
     payload = decode_token(refresh_token_str)
     if payload is None or payload.get("type") != "refresh":
         return None
@@ -58,7 +61,12 @@ async def refresh_tokens(db: AsyncSession, refresh_token_str: str) -> dict | Non
     if not user_id:
         return None
 
-    result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
+    try:
+        parsed_user_id = uuid.UUID(str(user_id))
+    except ValueError:
+        return None
+
+    result = await db.execute(select(User).where(User.id == parsed_user_id, User.is_active.is_(True)))
     user = result.scalar_one_or_none()
     if not user:
         return None
