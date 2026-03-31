@@ -140,6 +140,7 @@ def _check_oscillation(mongo_db: Any, monitor_id: str) -> dict:
     return {"suppressed": False}
 
 
+# run suppression rules cheapest-first: summary → severity → oscillation
 def should_suppress_alert(
     db: Session,
     mongo_db: Any,

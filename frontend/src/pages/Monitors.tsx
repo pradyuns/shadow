@@ -3,18 +3,7 @@ import { Link } from 'react-router-dom'
 import { Clock3, ExternalLink, Pause, Play, Plus, Radar, Search } from 'lucide-react'
 import api from '../lib/api'
 import type { Monitor } from '../lib/types'
-
-function timeAgo(dateStr: string | null) {
-  if (!dateStr) return 'Never'
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days}d ago`
-}
+import { extractItems, timeAgo } from '../lib/utils'
 
 export default function Monitors() {
   const [monitors, setMonitors] = useState<Monitor[]>([])
@@ -25,7 +14,7 @@ export default function Monitors() {
     api
       .get('/monitors')
       .then(({ data }) => {
-        setMonitors(Array.isArray(data) ? data : data.items || [])
+        setMonitors(extractItems<Monitor>(data))
         setLoading(false)
       })
       .catch(() => setLoading(false))

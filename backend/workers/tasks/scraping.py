@@ -36,6 +36,7 @@ BOT_DETECTION_PATTERNS = re.compile(
 )
 
 
+# heuristic: short text with captcha/block keywords signals bot detection
 def _looks_like_bot_detection(extracted_text: str) -> bool:
     """Check if extracted text looks like a bot-detection page.
 

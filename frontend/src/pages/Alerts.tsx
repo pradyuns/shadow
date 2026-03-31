@@ -3,17 +3,7 @@ import { Bell, Check, ChevronDown, ChevronRight, Filter, Layers, List, ShieldChe
 import api from '../lib/api'
 import type { Alert, AlertCluster } from '../lib/types'
 import { SEVERITY_COLORS, alertTitle, primaryAlertCategory, type SeverityLevel } from '../lib/types'
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days}d ago`
-}
+import { extractItems, timeAgo } from '../lib/utils'
 
 const SEVERITIES = ['all', 'critical', 'high', 'medium', 'low'] as const
 
@@ -196,13 +186,9 @@ export default function Alerts() {
     if (filter !== 'all') params.set('severity', filter)
     if (!showAcked) params.set('is_acknowledged', 'false')
 
-    const alertsPromise = api.get(`/alerts?${params}`).then(({ data }) =>
-      Array.isArray(data) ? data : data.items || [],
-    )
+    const alertsPromise = api.get(`/alerts?${params}`).then(({ data }) => extractItems<Alert>(data))
 
-    const clustersPromise = api.get('/clusters?per_page=50').then(({ data }) =>
-      Array.isArray(data) ? data : data.items || [],
-    ).catch(() => [])
+    const clustersPromise = api.get('/clusters?per_page=50').then(({ data }) => extractItems<AlertCluster>(data)).catch(() => [] as AlertCluster[])
 
     Promise.all([alertsPromise, clustersPromise])
       .then(([alertsData, clustersData]) => {
@@ -241,11 +227,9 @@ export default function Alerts() {
   const pendingCount = alerts.filter((alert) => !alert.is_acknowledged).length
   const clusterCount = clusters.filter((c) => !c.is_resolved).length
 
-  // Split alerts into clustered and unclustered
-  const clusteredAlertIds = new Set(
-    clusters.flatMap((c) => alerts.filter((a) => a.cluster_id === c.id).map((a) => a.id)),
-  )
-  const unclusteredAlerts = alerts.filter((a) => !a.cluster_id || !clusteredAlertIds.has(a.id))
+  // alerts without a cluster or whose cluster wasn't returned in the current fetch
+  const clusterIds = new Set(clusters.map((c) => c.id))
+  const unclusteredAlerts = alerts.filter((a) => !a.cluster_id || !clusterIds.has(a.cluster_id))
 
   if (loading) {
     return (

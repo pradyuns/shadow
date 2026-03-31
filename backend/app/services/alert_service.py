@@ -9,6 +9,7 @@ from app.models.alert import Alert
 from app.models.alert_cluster import AlertCluster
 
 
+# paginated cluster list with optional resolved/competitor filters
 async def list_clusters(
     db: AsyncSession,
     user_id: uuid.UUID,
@@ -54,6 +55,7 @@ async def resolve_cluster(db: AsyncSession, cluster: AlertCluster) -> AlertClust
     return cluster
 
 
+# paginated alert list with severity, monitor, ack, and date range filters
 async def list_alerts(
     db: AsyncSession,
     user_id: uuid.UUID,
@@ -85,7 +87,9 @@ async def list_alerts(
         count_query = count_query.where(Alert.created_at <= until)
 
     total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.order_by(Alert.created_at.desc()).offset((page - 1) * per_page).limit(per_page))
+    # use pre-computed offset to stay consistent with pagination.offset
+    offset = (page - 1) * per_page
+    result = await db.execute(query.order_by(Alert.created_at.desc()).offset(offset).limit(per_page))
     return list(result.scalars().all()), total
 
 
@@ -94,6 +98,7 @@ async def get_alert(db: AsyncSession, alert_id: uuid.UUID, user_id: uuid.UUID) -
     return result.scalar_one_or_none()
 
 
+# mark alert as reviewed with current timestamp
 async def acknowledge_alert(db: AsyncSession, alert: Alert) -> Alert:
     alert.is_acknowledged = True
     alert.acknowledged_at = datetime.now(timezone.utc)

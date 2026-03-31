@@ -14,17 +14,7 @@ import {
 import api from '../lib/api'
 import type { Alert, Monitor, NoiseLearningOverviewItem } from '../lib/types'
 import { SEVERITY_COLORS, alertTitle, type SeverityLevel } from '../lib/types'
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days}d ago`
-}
+import { extractItems, timeAgo } from '../lib/utils'
 
 function nextCheckWindow(dateStr: string) {
   const diff = new Date(dateStr).getTime() - Date.now()
@@ -46,9 +36,9 @@ export default function Dashboard() {
       api.get('/alerts?per_page=10').catch(() => ({ data: [] })),
       api.get('/noise-learning/overview?per_page=6').catch(() => ({ data: [] })),
     ]).then(([m, a, noise]) => {
-      setMonitors(Array.isArray(m.data) ? m.data : m.data.items || [])
-      setAlerts(Array.isArray(a.data) ? a.data : a.data.items || [])
-      setNoiseOverview(Array.isArray(noise.data) ? noise.data : noise.data.items || [])
+      setMonitors(extractItems<Monitor>(m.data))
+      setAlerts(extractItems<Alert>(a.data))
+      setNoiseOverview(extractItems<NoiseLearningOverviewItem>(noise.data))
       setLoading(false)
     })
   }, [])

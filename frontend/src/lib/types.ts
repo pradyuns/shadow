@@ -153,6 +153,7 @@ export interface NotificationSetting {
 
 export type SeverityLevel = 'critical' | 'high' | 'medium' | 'low' | 'noise'
 
+// badge background and text color for each severity tier
 export const SEVERITY_COLORS: Record<SeverityLevel, string> = {
   critical: 'bg-rose-100 text-rose-700',
   high: 'bg-amber-100 text-amber-700',

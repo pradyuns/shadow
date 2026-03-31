@@ -8,7 +8,7 @@ import pytest
 
 
 class TestSendNotifications:
-    @patch("app.db.postgres_sync.get_sync_db")
+    @patch("workers.tasks.notifications.get_sync_db")
     def test_alert_not_found(self, mock_pg):
         from workers.tasks.notifications import send_notifications
 
@@ -19,7 +19,7 @@ class TestSendNotifications:
         result = send_notifications("alert-1")
         assert result["error"] == "alert_not_found"
 
-    @patch("app.db.postgres_sync.get_sync_db")
+    @patch("workers.tasks.notifications.get_sync_db")
     def test_skips_already_notified(self, mock_pg):
         from workers.tasks.notifications import send_notifications
 
@@ -37,7 +37,7 @@ class TestSendNotifications:
         assert result["email_sent"] is False
 
     @patch("workers.tasks.notifications.get_notifier")
-    @patch("app.db.postgres_sync.get_sync_db")
+    @patch("workers.tasks.notifications.get_sync_db")
     def test_sends_slack_notification(self, mock_pg, mock_get_notifier):
         from workers.tasks.notifications import send_notifications
 
@@ -101,7 +101,7 @@ class TestSendNotifications:
         assert result["slack_sent"] is True
         notifier.send.assert_called_once()
 
-    @patch("app.db.postgres_sync.get_sync_db")
+    @patch("workers.tasks.notifications.get_sync_db")
     def test_no_settings_configured(self, mock_pg):
         from workers.tasks.notifications import send_notifications
 
@@ -135,9 +135,9 @@ class TestSendNotifications:
         result = send_notifications(str(alert.id))
         assert result["reason"] == "no_settings"
 
-    @patch("app.db.mongodb_sync.get_sync_mongo_db")
+    @patch("workers.tasks.notifications.get_sync_mongo_db")
     @patch("workers.tasks.notifications.get_notifier")
-    @patch("app.db.postgres_sync.get_sync_db")
+    @patch("workers.tasks.notifications.get_sync_db")
     def test_digest_mode_queues_alert(self, mock_pg, mock_get_notifier, mock_mongo):
         from workers.tasks.notifications import send_notifications
 
@@ -191,7 +191,7 @@ class TestSendNotifications:
 
 class TestSendTestNotification:
     @patch("workers.tasks.notifications.get_notifier")
-    @patch("app.db.postgres_sync.get_sync_db")
+    @patch("workers.tasks.notifications.get_sync_db")
     def test_send_test_success(self, mock_pg, mock_get_notifier):
         from workers.tasks.notifications import send_test_notification
 
@@ -210,7 +210,7 @@ class TestSendTestNotification:
         assert result["sent"] is True
         notifier.send_test.assert_called_once()
 
-    @patch("app.db.postgres_sync.get_sync_db")
+    @patch("workers.tasks.notifications.get_sync_db")
     def test_send_test_no_setting(self, mock_pg):
         from workers.tasks.notifications import send_test_notification
 
@@ -223,7 +223,7 @@ class TestSendTestNotification:
         assert result["error"] == "no_setting"
 
     @patch("workers.tasks.notifications.get_notifier")
-    @patch("app.db.postgres_sync.get_sync_db")
+    @patch("workers.tasks.notifications.get_sync_db")
     def test_send_test_error(self, mock_pg, mock_get_notifier):
         from workers.tasks.notifications import send_test_notification
 
@@ -241,8 +241,8 @@ class TestSendTestNotification:
 
 
 class TestSendDailyDigest:
-    @patch("app.db.postgres_sync.get_sync_db")
-    @patch("app.db.mongodb_sync.get_sync_mongo_db")
+    @patch("workers.tasks.notifications.get_sync_db")
+    @patch("workers.tasks.notifications.get_sync_mongo_db")
     def test_no_pending_digests(self, mock_mongo, mock_pg):
         from workers.tasks.notifications import send_daily_digest
 
@@ -257,8 +257,8 @@ class TestSendDailyDigest:
         assert result["digests_sent"] == 0
 
     @patch("workers.tasks.notifications.get_notifier")
-    @patch("app.db.postgres_sync.get_sync_db")
-    @patch("app.db.mongodb_sync.get_sync_mongo_db")
+    @patch("workers.tasks.notifications.get_sync_db")
+    @patch("workers.tasks.notifications.get_sync_mongo_db")
     def test_sends_digest(self, mock_mongo, mock_pg, mock_get_notifier):
         from workers.tasks.notifications import send_daily_digest
 
