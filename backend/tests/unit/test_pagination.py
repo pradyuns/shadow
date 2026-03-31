@@ -9,11 +9,16 @@ class TestPaginationParams:
     """Test pagination parameter calculations."""
 
     def test_default_values(self):
-        # Must pass explicit ints — Query() defaults only work inside FastAPI DI
-        params = PaginationParams(page=1, per_page=20)
+        params = PaginationParams()
         assert params.page == 1
         assert params.per_page == 20
         assert params.offset == 0
+
+    def test_limit_alias_overrides_per_page(self):
+        params = PaginationParams(page=2, per_page=20, limit=5)
+        assert params.page == 2
+        assert params.per_page == 5
+        assert params.offset == 5
 
     def test_custom_page(self):
         params = PaginationParams(page=3, per_page=20)

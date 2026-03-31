@@ -22,6 +22,18 @@ from workers.notifier.factory import get_notifier
 logger = structlog.get_logger()
 
 
+def get_sync_db():
+    from app.db.postgres_sync import get_sync_db as _get_sync_db
+
+    return _get_sync_db()
+
+
+def get_sync_mongo_db():
+    from app.db.mongodb_sync import get_sync_mongo_db as _get_sync_mongo_db
+
+    return _get_sync_mongo_db()
+
+
 @celery_app.task(
     name="workers.tasks.notifications.send_notifications",
     queue="analysis",
@@ -37,8 +49,6 @@ def send_notifications(self, alert_id: str) -> dict:
     - Does the alert severity meet the min_severity threshold?
     - Is digest mode on? → queue instead of sending immediately
     """
-    from app.db.mongodb_sync import get_sync_mongo_db
-    from app.db.postgres_sync import get_sync_db
     from app.models.alert import Alert
     from app.models.monitor import Monitor
     from app.models.notification_setting import NotificationSetting
@@ -187,8 +197,6 @@ def send_daily_digest() -> dict:
     Runs hourly from Beat. Checks digest_queue for entries matching the
     current hour, groups alerts, sends one consolidated message per user/channel.
     """
-    from app.db.mongodb_sync import get_sync_mongo_db
-    from app.db.postgres_sync import get_sync_db
     from app.models.alert import Alert
     from app.models.monitor import Monitor
     from app.models.notification_setting import NotificationSetting
@@ -285,7 +293,6 @@ def send_daily_digest() -> dict:
 )
 def send_test_notification(user_id: str, channel: str) -> dict:
     """Send a test notification to verify channel configuration."""
-    from app.db.postgres_sync import get_sync_db
     from app.models.notification_setting import NotificationSetting
     from app.models.user import User
 
