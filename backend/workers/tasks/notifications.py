@@ -224,11 +224,7 @@ def send_daily_digest() -> dict:
         all_pairs = [(d["user_id"], d["channel"]) for d in pending_digests]
         all_user_ids = list({p[0] for p in all_pairs})
         all_settings = list(
-            db.execute(
-                select(NotificationSetting).where(NotificationSetting.user_id.in_(all_user_ids))
-            )
-            .scalars()
-            .all()
+            db.execute(select(NotificationSetting).where(NotificationSetting.user_id.in_(all_user_ids))).scalars().all()
         )
         settings_lookup = {(str(s.user_id), s.channel): s for s in all_settings}
 
