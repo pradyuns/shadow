@@ -35,6 +35,7 @@ class TestUpsertSetting:
     @pytest.mark.asyncio
     async def test_create_new_setting(self):
         db = AsyncMock()
+        db.add = MagicMock()
         result = MagicMock()
         result.scalar_one_or_none.return_value = None
         db.execute.return_value = result

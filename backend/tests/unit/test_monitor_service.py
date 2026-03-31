@@ -27,6 +27,7 @@ class TestCreateMonitor:
     @pytest.mark.asyncio
     async def test_create_success(self):
         db = AsyncMock()
+        db.add = MagicMock()
         user = _mock_user()
 
         # Monitor count = 0

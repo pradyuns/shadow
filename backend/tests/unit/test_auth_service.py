@@ -19,6 +19,7 @@ class TestRegisterUser:
     @pytest.mark.asyncio
     async def test_register_success(self):
         mock_db = AsyncMock()
+        mock_db.add = MagicMock()
         # No existing user
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
