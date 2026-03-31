@@ -17,7 +17,7 @@ class AlertRead(BaseModel):
     monitor_id: uuid.UUID
     severity: str
     summary: str
-    categories: list
+    categories: list[str]
     is_acknowledged: bool
     cluster_id: uuid.UUID | None = None
     notified_at: datetime | None
@@ -42,7 +42,7 @@ class ClusterRead(BaseModel):
     title: str
     severity: str
     alert_count: int
-    categories: list
+    categories: list[str]
     is_resolved: bool
     created_at: datetime
     updated_at: datetime

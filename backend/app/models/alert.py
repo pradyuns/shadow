@@ -19,7 +19,7 @@ class Alert(UUIDMixin, Base):
     )
     severity: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
-    categories: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="[]")
+    categories: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
     diff_id: Mapped[str] = mapped_column(String(24), nullable=False)
     analysis_id: Mapped[str] = mapped_column(String(24), nullable=False)
     is_acknowledged: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

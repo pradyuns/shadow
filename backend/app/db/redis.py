@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import redis.asyncio as aioredis
 
 from app.config import settings
 
-_cache_pool: aioredis.Redis | None = None
+_cache_pool: aioredis.Redis[str] | None = None
 
 
-def get_redis_cache() -> aioredis.Redis:
+def get_redis_cache() -> aioredis.Redis[str]:
     global _cache_pool
     if _cache_pool is None:
         _cache_pool = aioredis.from_url(

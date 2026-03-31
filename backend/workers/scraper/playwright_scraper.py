@@ -15,6 +15,7 @@ Architecture: Module-level browser singleton per worker process.
 """
 
 import time
+from typing import Any
 
 import structlog
 
@@ -23,15 +24,15 @@ from workers.scraper.base import BaseScraper, ScraperError, ScrapeResult
 logger = structlog.get_logger()
 
 # Module-level singleton — survives across Celery tasks in the same worker process.
-_playwright = None
-_browser = None
+_playwright: Any | None = None
+_browser: Any | None = None
 
 # Resource types to block: saves bandwidth and memory, speeds up scrapes.
 # We only care about the DOM text content, not how it looks.
 BLOCKED_RESOURCE_TYPES = {"image", "media", "font", "stylesheet"}
 
 
-def _get_browser():
+def _get_browser() -> Any:
     """Lazily initialize or recover the browser singleton.
 
     Why lazy init instead of worker_init signal:
@@ -69,7 +70,7 @@ def _get_browser():
     return _browser
 
 
-def _cleanup_browser():
+def _cleanup_browser() -> None:
     """Safely tear down browser and playwright instances."""
     global _playwright, _browser
     try:
@@ -183,7 +184,7 @@ class PlaywrightScraper(BaseScraper):
                     pass
 
 
-def shutdown_browser():
+def shutdown_browser() -> None:
     """Called during worker shutdown to clean up Chromium processes."""
     _cleanup_browser()
     logger.info("playwright_browser_shutdown")

@@ -4,6 +4,7 @@ import structlog
 from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
+from starlette.types import ASGIApp
 
 from app.db.redis import get_redis_cache
 
@@ -13,7 +14,7 @@ logger = structlog.get_logger()
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Simple sliding window rate limiter using Redis."""
 
-    def __init__(self, app, requests_per_minute: int = 100):
+    def __init__(self, app: ASGIApp, requests_per_minute: int = 100) -> None:
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
 

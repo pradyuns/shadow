@@ -25,10 +25,10 @@ Design decisions:
    budget monitoring and spend alerts.
 """
 
-import json
 import re
 import time
 from datetime import datetime, timezone
+from typing import Any, cast
 
 import structlog
 
@@ -37,7 +37,6 @@ from workers.classifier.prompts import SYSTEM_PROMPT, build_user_prompt, truncat
 from workers.classifier.schemas import (
     ChangeCategory,
     ClassificationResult,
-    SignificanceLevel,
 )
 
 logger = structlog.get_logger()
@@ -69,7 +68,7 @@ def _check_circuit_breaker() -> bool:
     return True
 
 
-def _record_failure(is_retryable: bool):
+def _record_failure(is_retryable: bool) -> None:
     """Record a failure and trip the breaker if threshold reached."""
     global _consecutive_failures, _circuit_open_until
 
@@ -87,7 +86,7 @@ def _record_failure(is_retryable: bool):
             )
 
 
-def _record_success():
+def _record_success() -> None:
     """Reset failure counter on success."""
     global _consecutive_failures
     _consecutive_failures = 0
@@ -98,7 +97,7 @@ def classify_change(
     competitor_name: str | None,
     page_type: str,
     url: str,
-) -> dict:
+) -> dict[str, Any]:
     """Classify a change using Claude API.
 
     Returns:
@@ -139,7 +138,7 @@ def classify_change(
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
     # Define the tool schema for structured output
-    tools = [
+    tools: list[dict[str, Any]] = [
         {
             "name": "classify_change",
             "description": "Classify the significance of a detected competitor website change",
@@ -187,9 +186,9 @@ def classify_change(
             model=settings.claude_model,
             max_tokens=1024,
             system=SYSTEM_PROMPT,
-            tools=tools,
-            tool_choice={"type": "tool", "name": "classify_change"},
-            messages=[{"role": "user", "content": user_prompt}],
+            tools=cast(Any, tools),
+            tool_choice=cast(Any, {"type": "tool", "name": "classify_change"}),
+            messages=cast(Any, [{"role": "user", "content": user_prompt}]),
         )
 
         duration_ms = int((time.monotonic() - start_time) * 1000)
@@ -212,7 +211,7 @@ def classify_change(
         else:
             # Validate through Pydantic
             try:
-                parsed = ClassificationResult(**tool_result)
+                parsed = ClassificationResult.model_validate(tool_result)
                 classification = parsed.model_dump()
                 needs_review = False
             except Exception as e:
@@ -269,7 +268,7 @@ def classify_change(
         return _error_result(f"Unexpected error: {e}", is_retryable=True)
 
 
-def _default_classification() -> dict:
+def _default_classification() -> dict[str, Any]:
     """Safe default when classification fails."""
     return {
         "significance_level": "medium",
@@ -278,7 +277,7 @@ def _default_classification() -> dict:
     }
 
 
-def _error_result(error_msg: str, is_retryable: bool) -> dict:
+def _error_result(error_msg: str, is_retryable: bool) -> dict[str, Any]:
     """Return a result dict for failed classifications."""
     return {
         "classification": _default_classification(),
@@ -291,7 +290,7 @@ def _error_result(error_msg: str, is_retryable: bool) -> dict:
     }
 
 
-def _safe_parse_tool_result(raw: dict) -> dict:
+def _safe_parse_tool_result(raw: dict[str, Any]) -> dict[str, Any]:
     """Best-effort parse of a tool result that failed Pydantic validation."""
     significance = raw.get("significance_level", "medium")
     if significance not in {"critical", "high", "medium", "low", "noise"}:
@@ -315,7 +314,7 @@ def _safe_parse_tool_result(raw: dict) -> dict:
     }
 
 
-def _fallback_parse(response) -> dict:
+def _fallback_parse(response: Any) -> dict[str, Any]:
     """Last-resort: extract classification from text blocks via regex.
 
     This handles the rare case where Claude responds with text instead
@@ -337,7 +336,7 @@ def _fallback_parse(response) -> dict:
             break
 
     # Try to find categories
-    categories = []
+    categories: list[str] = []
     for cat in ChangeCategory:
         if cat.value.replace("_", " ") in text_content.lower() or cat.value in text_content.lower():
             categories.append(cat.value)

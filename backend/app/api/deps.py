@@ -39,7 +39,7 @@ async def get_current_user(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
 
-    result = await db.execute(select(User).where(User.id == uid, User.is_active == True))
+    result = await db.execute(select(User).where(User.id == uid, User.is_active.is_(True)))
     user = result.scalar_one_or_none()
 
     if user is None:

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -31,7 +32,7 @@ async def get_monitor_noise_learning(
     monitor_id: uuid.UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> MonitorNoiseLearningRead:
     monitor = await get_monitor(db, monitor_id, user.id)
     if not monitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Monitor not found")
@@ -84,7 +85,7 @@ async def get_noise_learning_overview(
     pagination: PaginationParams = Depends(),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     result = await db.execute(
         select(Monitor.id, Monitor.name, Monitor.competitor_name).where(
             Monitor.user_id == user.id,

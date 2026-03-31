@@ -46,7 +46,7 @@ def _normalize_summary(summary: str) -> str:
     return text
 
 
-def _check_same_summary(db: Session, monitor_id: str, summary: str, hours: int = 24) -> dict:
+def _check_same_summary(db: Session, monitor_id: str, summary: str, hours: int = 24) -> dict[str, Any]:
     """Check if a similar alert was already sent for this monitor recently."""
     from app.models.alert import Alert
 
@@ -71,7 +71,7 @@ def _check_same_summary(db: Session, monitor_id: str, summary: str, hours: int =
     return {"suppressed": False}
 
 
-def _check_severity_escalation(db: Session, monitor_id: str, severity: str, hours: int = 24) -> dict:
+def _check_severity_escalation(db: Session, monitor_id: str, severity: str, hours: int = 24) -> dict[str, Any]:
     """Check if a same-or-higher severity alert was already sent recently.
 
     Only notify if the new alert's severity EXCEEDS the highest recent one.
@@ -97,15 +97,16 @@ def _check_severity_escalation(db: Session, monitor_id: str, severity: str, hour
     max_recent_order = max(SEVERITY_ORDER.get(s, 0) for s in recent_severities)
 
     if new_order <= max_recent_order:
+        recent_max = max(recent_severities, key=lambda sev: SEVERITY_ORDER.get(sev, 0))
         return {
             "suppressed": True,
-            "reason": f"Severity {severity} does not exceed recent max ({max(recent_severities, key=lambda s: SEVERITY_ORDER.get(s, 0))})",
+            "reason": f"Severity {severity} does not exceed recent max ({recent_max})",
         }
 
     return {"suppressed": False}
 
 
-def _check_oscillation(mongo_db: Any, monitor_id: str) -> dict:
+def _check_oscillation(mongo_db: Any, monitor_id: str) -> dict[str, Any]:
     """Detect if a page is oscillating between two states.
 
     Looks at the last N text hashes. If it alternates (A, B, A, B, ...),
@@ -132,9 +133,12 @@ def _check_oscillation(mongo_db: Any, monitor_id: str) -> dict:
     flips = sum(1 for i in range(1, len(hashes)) if hashes[i] != hashes[i - 1])
 
     if flips >= OSCILLATION_THRESHOLD * 2:  # Each full oscillation = 2 flips
+        reason = (
+            f"Page oscillating between {len(unique_hashes)} states " f"({flips} flips in last {len(hashes)} snapshots)"
+        )
         return {
             "suppressed": True,
-            "reason": f"Page oscillating between {len(unique_hashes)} states ({flips} flips in last {len(hashes)} snapshots)",
+            "reason": reason,
         }
 
     return {"suppressed": False}
@@ -147,7 +151,7 @@ def should_suppress_alert(
     monitor_id: str,
     summary: str,
     severity: str,
-) -> dict:
+) -> dict[str, Any]:
     """Run all suppression rules. Returns first match or no suppression.
 
     Rules are ordered by cost (cheapest first):

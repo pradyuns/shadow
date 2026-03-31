@@ -28,7 +28,7 @@ async def list_clusters(
         query = query.where(AlertCluster.competitor_name == competitor_name)
         count_query = count_query.where(AlertCluster.competitor_name == competitor_name)
 
-    total = (await db.execute(count_query)).scalar()
+    total = (await db.execute(count_query)).scalar() or 0
     result = await db.execute(
         query.options(selectinload(AlertCluster.alerts))
         .order_by(AlertCluster.updated_at.desc())
@@ -86,7 +86,7 @@ async def list_alerts(
         query = query.where(Alert.created_at <= until)
         count_query = count_query.where(Alert.created_at <= until)
 
-    total = (await db.execute(count_query)).scalar()
+    total = (await db.execute(count_query)).scalar() or 0
     # use pre-computed offset to stay consistent with pagination.offset
     offset = (page - 1) * per_page
     result = await db.execute(query.order_by(Alert.created_at.desc()).offset(offset).limit(per_page))
