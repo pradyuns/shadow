@@ -1,6 +1,9 @@
 import math
+from typing import Any, TypeVar
 
 from fastapi import Query
+
+T = TypeVar("T")
 
 
 class PaginationParams:
@@ -20,7 +23,7 @@ class PaginationParams:
         self.per_page = min(100, max(1, int(requested_per_page)))
         self.offset = (self.page - 1) * self.per_page
 
-    def paginate(self, items: list, total: int) -> dict:
+    def paginate(self, items: list[T], total: int) -> dict[str, Any]:
         return {
             "items": items,
             "total": total,

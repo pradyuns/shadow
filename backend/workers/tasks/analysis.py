@@ -12,6 +12,7 @@ Key decisions:
 
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 import structlog
 from bson import ObjectId
@@ -31,7 +32,7 @@ logger = structlog.get_logger()
     default_retry_delay=5,
     rate_limit="20/m",
 )
-def classify_significance(self, diff_id: str) -> dict:
+def classify_significance(self: Any, diff_id: str) -> dict[str, Any]:
     """Classify the significance of a diff using Claude API.
 
     Flow:
@@ -81,8 +82,6 @@ def classify_significance(self, diff_id: str) -> dict:
         # Call Claude API
         filtered_diff = diff_doc.get("filtered_diff") or diff_doc.get("unified_diff", "")
         try:
-            import anthropic
-
             result = classify_change(
                 filtered_diff=filtered_diff,
                 competitor_name=monitor.competitor_name,

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,7 +35,7 @@ class Settings(BaseSettings):
     auth_access_cookie_name: str = "shadow_access_token"
     auth_refresh_cookie_name: str = "shadow_refresh_token"
     auth_cookie_secure: bool = False
-    auth_cookie_samesite: str = "lax"
+    auth_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     auth_cookie_domain: str | None = None
 
     # Anthropic

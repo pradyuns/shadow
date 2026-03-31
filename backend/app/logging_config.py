@@ -23,6 +23,7 @@ def setup_logging() -> None:
         structlog.processors.UnicodeDecoder(),
     ]
 
+    renderer: structlog.types.Processor
     if settings.log_format == "json":
         renderer = structlog.processors.JSONRenderer()
     else:

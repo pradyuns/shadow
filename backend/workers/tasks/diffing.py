@@ -9,6 +9,7 @@ Key decisions:
 """
 
 from datetime import datetime, timezone
+from typing import Any
 
 import structlog
 from bson import ObjectId
@@ -25,7 +26,7 @@ logger = structlog.get_logger()
     max_retries=2,
     default_retry_delay=5,
 )
-def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
+def compute_diff(self: Any, monitor_id: str, snapshot_id: str) -> dict[str, Any]:
     """Compute diff between the new snapshot and the previous one.
 
     Flow:
@@ -148,6 +149,8 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
         }
         inserted = mongo_db.diffs.insert_one(diff_doc)
         diff_id = str(inserted.inserted_id)
+        recorded_at = diff_doc.get("created_at")
+        recorded_at_dt = recorded_at if isinstance(recorded_at, datetime) else None
 
         if filter_result.learned_pattern_hits:
             try:
@@ -156,7 +159,7 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
                     monitor_id=str(monitor_id),
                     pattern_hits=filter_result.learned_pattern_hits,
                     diff_id=diff_id,
-                    recorded_at=diff_doc["created_at"],
+                    recorded_at=recorded_at_dt,
                 )
             except Exception:
                 logger.warning(
@@ -173,7 +176,7 @@ def compute_diff(self, monitor_id: str, snapshot_id: str) -> dict:
                     competitor_name=monitor.competitor_name,
                     diff_id=diff_id,
                     unified_diff=diff_result.unified_diff,
-                    observed_at=diff_doc["created_at"],
+                    observed_at=recorded_at_dt,
                 )
             except Exception:
                 learn_stats = {"error": "adaptive_learning_failed"}

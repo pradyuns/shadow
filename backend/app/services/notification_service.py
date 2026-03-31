@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +30,9 @@ def serialize_setting(setting: NotificationSetting) -> NotificationSettingRead:
     )
 
 
-async def upsert_setting(db: AsyncSession, user_id: uuid.UUID, channel: str, data: dict) -> NotificationSetting:
+async def upsert_setting(
+    db: AsyncSession, user_id: uuid.UUID, channel: str, data: dict[str, Any]
+) -> NotificationSetting:
     result = await db.execute(
         select(NotificationSetting).where(
             NotificationSetting.user_id == user_id,

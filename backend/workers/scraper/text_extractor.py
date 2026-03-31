@@ -13,9 +13,11 @@ extractors, they register here and get dispatched by page_type.
 
 import hashlib
 import re
+from typing import Any
 
 import structlog
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 logger = structlog.get_logger()
 
@@ -23,7 +25,7 @@ logger = structlog.get_logger()
 REMOVE_TAGS = {"script", "style", "noscript", "iframe", "svg", "head", "meta", "link"}
 
 
-def extract_text(raw_html: str, css_selector: str | None = None, page_type: str = "other") -> dict:
+def extract_text(raw_html: str, css_selector: str | None = None, page_type: str = "other") -> dict[str, Any]:
     """Extract clean text from raw HTML.
 
     Returns:
@@ -40,13 +42,14 @@ def extract_text(raw_html: str, css_selector: str | None = None, page_type: str 
         tag.decompose()
 
     # Apply CSS selector if specified
+    text_root: BeautifulSoup | Tag = soup
     if css_selector:
         selected = soup.select_one(css_selector)
         if selected:
-            soup = selected
+            text_root = selected
 
     # Extract text with newline separators
-    text = soup.get_text(separator="\n", strip=True)
+    text = text_root.get_text(separator="\n", strip=True)
 
     # Normalize whitespace: collapse multiple blank lines, strip trailing spaces
     text = re.sub(r"\n{3,}", "\n\n", text)

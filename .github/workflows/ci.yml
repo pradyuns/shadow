@@ -45,8 +45,11 @@ jobs:
       - name: Isort
         run: isort --check-only .
 
-      # NOTE: full flake8/mypy enforcement is tracked as follow-up cleanup.
-      # Keep this gate focused on deterministic format/import-order checks now.
+      - name: Flake8
+        run: flake8 app workers
+
+      - name: Mypy
+        run: mypy app workers
 
   backend-tests:
     name: Backend Tests

@@ -30,7 +30,7 @@ class Monitor(UUIDMixin, TimestampMixin, Base):
     last_snapshot_id: Mapped[str | None] = mapped_column(String(24), nullable=True)
     last_change_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    noise_patterns: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="[]")
+    noise_patterns: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
     css_selector: Mapped[str | None] = mapped_column(Text, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

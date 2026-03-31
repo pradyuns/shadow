@@ -1,5 +1,6 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,12 +11,12 @@ from app.utils.validators import validate_regex_pattern, validate_url_safe
 
 
 # validate limits, url safety, duplicates, then persist a new monitor
-async def create_monitor(db: AsyncSession, user: User, data: dict) -> Monitor:
+async def create_monitor(db: AsyncSession, user: User, data: dict[str, Any]) -> Monitor:
     # Check monitor limit
     count_result = await db.execute(
         select(func.count(Monitor.id)).where(Monitor.user_id == user.id, Monitor.deleted_at.is_(None))
     )
-    current_count = count_result.scalar()
+    current_count = count_result.scalar() or 0
     if current_count >= user.max_monitors:
         raise ValueError(f"Monitor limit reached ({user.max_monitors})")
 
@@ -98,12 +99,12 @@ async def list_monitors(
         query = query.where(search_filter)
         count_query = count_query.where(search_filter)
 
-    total = (await db.execute(count_query)).scalar()
+    total = (await db.execute(count_query)).scalar() or 0
     result = await db.execute(query.order_by(Monitor.created_at.desc()).offset((page - 1) * per_page).limit(per_page))
     return list(result.scalars().all()), total
 
 
-async def update_monitor(db: AsyncSession, monitor: Monitor, data: dict) -> Monitor:
+async def update_monitor(db: AsyncSession, monitor: Monitor, data: dict[str, Any]) -> Monitor:
     for key, value in data.items():
         if value is not None and hasattr(monitor, key):
             if key == "noise_patterns":
