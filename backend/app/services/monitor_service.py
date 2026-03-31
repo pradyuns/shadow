@@ -9,6 +9,7 @@ from app.models.user import User
 from app.utils.validators import validate_regex_pattern, validate_url_safe
 
 
+# validate limits, url safety, duplicates, then persist a new monitor
 async def create_monitor(db: AsyncSession, user: User, data: dict) -> Monitor:
     # Check monitor limit
     count_result = await db.execute(
@@ -116,6 +117,7 @@ async def update_monitor(db: AsyncSession, monitor: Monitor, data: dict) -> Moni
     return monitor
 
 
+# deactivate and mark for deletion — hard delete runs after retention period
 async def soft_delete_monitor(db: AsyncSession, monitor: Monitor) -> None:
     monitor.is_active = False
     monitor.deleted_at = datetime.now(timezone.utc)

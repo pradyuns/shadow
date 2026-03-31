@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.db.mongodb import get_mongo_db
+from app.db.mongodb import get_mongo_db, normalize_mongo_id
 from app.db.postgres import get_db
 from app.models.user import User
 from app.schemas.diff import DiffDetail, DiffRead
@@ -38,13 +38,13 @@ async def list_diffs(
     cursor = (
         collection.find(query_filter, {"unified_diff": 0, "filtered_diff": 0})
         .sort("created_at", -1)
-        .skip((pagination.page - 1) * pagination.per_page)
+        .skip(pagination.offset)
         .limit(pagination.per_page)
     )
 
     items = []
     async for doc in cursor:
-        doc["id"] = str(doc.pop("_id"))
+        normalize_mongo_id(doc)
         items.append(DiffRead(**doc))
 
     return pagination.paginate(items, total)

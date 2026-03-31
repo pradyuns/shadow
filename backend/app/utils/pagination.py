@@ -3,6 +3,7 @@ import math
 from fastapi import Query
 
 
+# fastapi dependency that parses page/per_page from query params
 class PaginationParams:
     def __init__(
         self,

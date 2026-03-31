@@ -1,3 +1,6 @@
+from contextlib import contextmanager
+from typing import Generator
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -16,3 +19,13 @@ SyncSessionFactory = sessionmaker(bind=sync_engine, class_=Session, expire_on_co
 
 def get_sync_db() -> Session:
     return SyncSessionFactory()
+
+
+# context manager that guarantees the session is closed after use
+@contextmanager
+def sync_db_session() -> Generator[Session, None, None]:
+    db = SyncSessionFactory()
+    try:
+        yield db
+    finally:
+        db.close()

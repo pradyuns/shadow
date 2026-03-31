@@ -6,8 +6,10 @@ const api = axios.create({
   withCredentials: true,
 })
 
+// prevent concurrent refresh attempts from racing
 let isRefreshing = false
 
+// auto-refresh expired access tokens, redirect to login on failure
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
@@ -42,6 +44,7 @@ api.interceptors.response.use(
   },
 )
 
+// pull the detail string from an axios error response, or fall back to a default
 export function extractApiErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
     const detail = error.response?.data?.detail

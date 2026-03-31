@@ -16,9 +16,11 @@ import {
 import api from '../lib/api'
 import type { Alert, Diff, Monitor, MonitorNoiseLearning, Snapshot } from '../lib/types'
 import { SEVERITY_COLORS, alertTitle, type SeverityLevel } from '../lib/types'
+import { extractItems, timeAgo } from '../lib/utils'
 
 type Tab = 'alerts' | 'snapshots' | 'diffs' | 'noise'
 
+// fetch all monitor sub-resources in parallel
 async function fetchMonitorDetail(id: string) {
   const [monitorResponse, alertResponse, snapshotResponse, diffResponse, noiseResponse] = await Promise.all([
     api.get(`/monitors/${id}`).catch(() => ({ data: null })),
@@ -30,25 +32,11 @@ async function fetchMonitorDetail(id: string) {
 
   return {
     monitor: monitorResponse.data as Monitor | null,
-    alerts: Array.isArray(alertResponse.data) ? alertResponse.data : alertResponse.data.items || [],
-    snapshots: Array.isArray(snapshotResponse.data)
-      ? snapshotResponse.data
-      : snapshotResponse.data.items || [],
-    diffs: Array.isArray(diffResponse.data) ? diffResponse.data : diffResponse.data.items || [],
+    alerts: extractItems<Alert>(alertResponse.data),
+    snapshots: extractItems<Snapshot>(snapshotResponse.data),
+    diffs: extractItems<Diff>(diffResponse.data),
     noiseLearning: noiseResponse.data as MonitorNoiseLearning | null,
   }
-}
-
-function timeAgo(dateStr: string | null) {
-  if (!dateStr) return 'Never'
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days}d ago`
 }
 
 function scrapeTone(monitor: Monitor) {
@@ -379,139 +367,125 @@ export default function MonitorDetail() {
           </div>
 
           <div className="panel overflow-hidden">
-            {tab === 'alerts' && (
-              <>
-                {alerts.length === 0 ? (
-                  <div className="px-6 py-12 text-center">
-                    <Bell className="mx-auto h-10 w-10 text-slate-300" />
-                    <div className="mt-4 text-base font-semibold text-slate-950">No alerts yet</div>
-                    <div className="mt-2 text-sm text-slate-600">
-                      Alerts for this monitor will appear here after a meaningful change is detected.
+            {tab === 'alerts' && (alerts.length === 0 ? (
+              <div className="px-6 py-12 text-center">
+                <Bell className="mx-auto h-10 w-10 text-slate-300" />
+                <div className="mt-4 text-base font-semibold text-slate-950">No alerts yet</div>
+                <div className="mt-2 text-sm text-slate-600">
+                  Alerts for this monitor will appear here after a meaningful change is detected.
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-200">
+                {alerts.map((alert) => (
+                  <div key={alert.id} className="grid gap-4 px-6 py-4 lg:grid-cols-[auto_1fr_auto]">
+                    <div>
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          SEVERITY_COLORS[alert.severity as SeverityLevel] || SEVERITY_COLORS.low
+                        }`}
+                      >
+                        {alert.severity.toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-slate-950">
+                        {alertTitle(alert)}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600">{alert.summary}</div>
+                    </div>
+                    <div className="text-right text-xs text-slate-500">
+                      <div>{timeAgo(alert.created_at)}</div>
+                      <div className="mt-1">
+                        {alert.is_acknowledged ? 'Acknowledged' : 'Awaiting review'}
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="divide-y divide-slate-200">
-                    {alerts.map((alert) => (
-                      <div key={alert.id} className="grid gap-4 px-6 py-4 lg:grid-cols-[auto_1fr_auto]">
-                        <div>
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                              SEVERITY_COLORS[alert.severity as SeverityLevel] || SEVERITY_COLORS.low
-                            }`}
-                          >
-                            {alert.severity.toUpperCase()}
+                ))}
+              </div>
+            ))}
+
+            {tab === 'snapshots' && (snapshots.length === 0 ? (
+              <div className="px-6 py-12 text-center">
+                <FileText className="mx-auto h-10 w-10 text-slate-300" />
+                <div className="mt-4 text-base font-semibold text-slate-950">No snapshots captured</div>
+                <div className="mt-2 text-sm text-slate-600">
+                  Trigger a scrape or wait for the next scheduled run.
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-200">
+                {snapshots.map((snapshot) => (
+                  <div key={snapshot.id} className="grid gap-4 px-6 py-4 lg:grid-cols-[1fr_auto]">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-950">
+                        Snapshot {snapshot.id.slice(-8)}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600">
+                        {snapshot.render_method || 'Unknown render method'} · HTTP {snapshot.http_status ?? 'n/a'} ·{' '}
+                        {snapshot.fetch_duration_ms ? `${snapshot.fetch_duration_ms} ms` : 'timing unavailable'}
+                      </div>
+                      <div className="mt-2 font-mono text-xs text-slate-500">
+                        {snapshot.text_hash || 'No text hash recorded'}
+                      </div>
+                    </div>
+                    <div className="text-right text-xs text-slate-500">
+                      <div className="inline-flex items-center gap-1">
+                        <Clock3 className="h-3.5 w-3.5" />
+                        {timeAgo(snapshot.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            {tab === 'diffs' && (diffs.length === 0 ? (
+              <div className="px-6 py-12 text-center">
+                <GitCompare className="mx-auto h-10 w-10 text-slate-300" />
+                <div className="mt-4 text-base font-semibold text-slate-950">No diffs available</div>
+                <div className="mt-2 text-sm text-slate-600">
+                  Diffs appear once at least two snapshots are available for comparison.
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-200">
+                {diffs.map((diff) => (
+                  <div key={diff.id} className="grid gap-4 px-6 py-4 lg:grid-cols-[1fr_auto]">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="text-sm font-semibold text-slate-950">
+                          {diff.is_empty_after_filter ? 'Noise-only diff' : 'Meaningful diff'}
+                        </div>
+                        {diff.is_empty_after_filter && (
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                            Noise only
                           </span>
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-slate-950">
-                            {alertTitle(alert)}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-600">{alert.summary}</div>
-                        </div>
-                        <div className="text-right text-xs text-slate-500">
-                          <div>{timeAgo(alert.created_at)}</div>
-                          <div className="mt-1">
-                            {alert.is_acknowledged ? 'Acknowledged' : 'Awaiting review'}
-                          </div>
-                        </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {tab === 'snapshots' && (
-              <>
-                {snapshots.length === 0 ? (
-                  <div className="px-6 py-12 text-center">
-                    <FileText className="mx-auto h-10 w-10 text-slate-300" />
-                    <div className="mt-4 text-base font-semibold text-slate-950">No snapshots captured</div>
-                    <div className="mt-2 text-sm text-slate-600">
-                      Trigger a scrape or wait for the next scheduled run.
+                      <div className="mt-2 flex flex-wrap gap-3 text-sm text-slate-600">
+                        <span className="text-emerald-700">+{diff.diff_lines_added} lines added</span>
+                        <span className="text-rose-700">-{diff.diff_lines_removed} lines removed</span>
+                        <span>{diff.noise_lines_removed} noise lines filtered</span>
+                        {(diff.learned_noise_lines_removed || 0) > 0 && (
+                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                            {diff.learned_noise_lines_removed} from learned patterns
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right text-xs text-slate-500">
+                      <div className="inline-flex items-center gap-1">
+                        <Clock3 className="h-3.5 w-3.5" />
+                        {timeAgo(diff.created_at)}
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="divide-y divide-slate-200">
-                    {snapshots.map((snapshot) => (
-                      <div key={snapshot.id} className="grid gap-4 px-6 py-4 lg:grid-cols-[1fr_auto]">
-                        <div>
-                          <div className="text-sm font-semibold text-slate-950">
-                            Snapshot {snapshot.id.slice(-8)}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-600">
-                            {snapshot.render_method || 'Unknown render method'} · HTTP {snapshot.http_status ?? 'n/a'} ·{' '}
-                            {snapshot.fetch_duration_ms ? `${snapshot.fetch_duration_ms} ms` : 'timing unavailable'}
-                          </div>
-                          <div className="mt-2 font-mono text-xs text-slate-500">
-                            {snapshot.text_hash || 'No text hash recorded'}
-                          </div>
-                        </div>
-                        <div className="text-right text-xs text-slate-500">
-                          <div className="inline-flex items-center gap-1">
-                            <Clock3 className="h-3.5 w-3.5" />
-                            {timeAgo(snapshot.created_at)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+                ))}
+              </div>
+            ))}
 
-            {tab === 'diffs' && (
-              <>
-                {diffs.length === 0 ? (
-                  <div className="px-6 py-12 text-center">
-                    <GitCompare className="mx-auto h-10 w-10 text-slate-300" />
-                    <div className="mt-4 text-base font-semibold text-slate-950">No diffs available</div>
-                    <div className="mt-2 text-sm text-slate-600">
-                      Diffs appear once at least two snapshots are available for comparison.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-200">
-                    {diffs.map((diff) => (
-                      <div key={diff.id} className="grid gap-4 px-6 py-4 lg:grid-cols-[1fr_auto]">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <div className="text-sm font-semibold text-slate-950">
-                              {diff.is_empty_after_filter ? 'Noise-only diff' : 'Meaningful diff'}
-                            </div>
-                            {diff.is_empty_after_filter && (
-                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                                Noise only
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-3 text-sm text-slate-600">
-                            <span className="text-emerald-700">+{diff.diff_lines_added} lines added</span>
-                            <span className="text-rose-700">-{diff.diff_lines_removed} lines removed</span>
-                            <span>{diff.noise_lines_removed} noise lines filtered</span>
-                            {(diff.learned_noise_lines_removed || 0) > 0 && (
-                              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                                {diff.learned_noise_lines_removed} from learned patterns
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right text-xs text-slate-500">
-                          <div className="inline-flex items-center gap-1">
-                            <Clock3 className="h-3.5 w-3.5" />
-                            {timeAgo(diff.created_at)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {tab === 'noise' && (
-              <>
-                {!noiseLearning || noiseLearning.learned_patterns === 0 ? (
+            {tab === 'noise' && (!noiseLearning || noiseLearning.learned_patterns === 0 ? (
                   <div className="px-6 py-12 text-center">
                     <ShieldCheck className="mx-auto h-10 w-10 text-slate-300" />
                     <div className="mt-4 text-base font-semibold text-slate-950">No learned patterns yet</div>
@@ -585,9 +559,7 @@ export default function MonitorDetail() {
                       ))}
                     </div>
                   </div>
-                )}
-              </>
-            )}
+                ))}
           </div>
         </div>
       </div>

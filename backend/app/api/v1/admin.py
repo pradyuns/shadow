@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +27,7 @@ async def system_stats(
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    # postgres counts (sequential — single session isn't safe for concurrent use)
     user_count = (await db.execute(select(func.count(User.id)))).scalar()
     monitor_count = (await db.execute(select(func.count(Monitor.id)).where(Monitor.deleted_at.is_(None)))).scalar()
     active_monitor_count = (
@@ -35,10 +38,13 @@ async def system_stats(
         await db.execute(select(func.count(Alert.id)).where(Alert.is_acknowledged == False))
     ).scalar()
 
+    # mongo counts run in parallel since they use independent connections
     mongo_db = get_mongo_db()
-    snapshot_count = await mongo_db.snapshots.count_documents({})
-    diff_count = await mongo_db.diffs.count_documents({})
-    analysis_count = await mongo_db.analyses.count_documents({})
+    snapshot_count, diff_count, analysis_count = await asyncio.gather(
+        mongo_db.snapshots.count_documents({}),
+        mongo_db.diffs.count_documents({}),
+        mongo_db.analyses.count_documents({}),
+    )
 
     return {
         "users": user_count,

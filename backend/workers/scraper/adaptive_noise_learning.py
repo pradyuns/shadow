@@ -83,6 +83,7 @@ class CandidatePattern:
     after: str
 
 
+# timezone helpers — ensure all timestamps are utc-aware
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -149,6 +150,7 @@ def _extract_replacement_pairs(unified_diff: str) -> list[tuple[str, str]]:
     return pairs
 
 
+# build a regex pattern from a before/after line pair using token-level alignment
 def _build_candidate_pattern(before: str, after: str) -> CandidatePattern | None:
     if not before or not after or before == after:
         return None
@@ -227,6 +229,7 @@ def _has_digit_adjacent_business_term(text: str) -> bool:
     return False
 
 
+# check if a candidate pattern contains business-critical signals that shouldn't be auto-filtered
 def _safeguard_block_reason(before: str, after: str, competitor_name: str | None) -> str | None:
     combined = f"{before} {after}"
     if PRICE_SIGNAL_RE.search(combined):
@@ -244,11 +247,13 @@ def _safeguard_block_reason(before: str, after: str, competitor_name: str | None
     return None
 
 
+# exponential decay — patterns not seen recently lose relevance
 def _compute_decay_score(last_seen_at: datetime, now: datetime) -> float:
     age_days = max((now - _as_utc(last_seen_at)).total_seconds(), 0.0) / 86400.0
     return 0.5 ** (age_days / DECAY_HALF_LIFE_DAYS)
 
 
+# weighted confidence score: 45% support ratio, 35% similarity, 20% recency
 def _compute_confidence(
     support_count: int,
     avg_similarity: float,
@@ -260,7 +265,8 @@ def _compute_confidence(
     return round(min(0.995, max(0.0, confidence)), 4)
 
 
-def _sum_recent_filter_events(events: list[dict[str, Any]], now: datetime, *, days: int = 7) -> int:
+# sum filter event counts within a rolling window (used by api layer too)
+def sum_recent_filter_events(events: list[dict[str, Any]], now: datetime, *, days: int = 7) -> int:
     cutoff = now - timedelta(days=days)
     total = 0
     for event in events:
@@ -272,6 +278,7 @@ def _sum_recent_filter_events(events: list[dict[str, Any]], now: datetime, *, da
     return total
 
 
+# check promotion criteria: decay, review flag, support count, confidence
 def _is_pattern_active(doc: dict[str, Any], now: datetime) -> tuple[bool, float]:
     last_seen = _as_utc(doc.get("last_seen_at"))
     decay = _compute_decay_score(last_seen, now)
@@ -299,6 +306,7 @@ def _ensure_indexes(mongo_db: Any) -> None:
     _indexes_ensured = True
 
 
+# return regex strings for all active learned patterns, deactivating decayed ones
 def get_active_learned_patterns(mongo_db: Any, monitor_id: str, *, now: datetime | None = None) -> list[str]:
     _ensure_indexes(mongo_db)
     ts = _as_utc(now)
@@ -321,6 +329,7 @@ def get_active_learned_patterns(mongo_db: Any, monitor_id: str, *, now: datetime
     return patterns
 
 
+# record how many lines each pattern filtered in a given diff
 def record_learned_pattern_usage(
     mongo_db: Any,
     *,
@@ -354,6 +363,7 @@ def record_learned_pattern_usage(
         )
 
 
+# extract replacement pairs from a diff and upsert candidate patterns into mongo
 def learn_patterns_from_diff(
     mongo_db: Any,
     *,
@@ -500,6 +510,7 @@ def learn_patterns_from_diff(
     }
 
 
+# aggregate stats across all learned patterns for a single monitor
 def summarize_monitor_patterns(pattern_docs: list[dict[str, Any]], *, now: datetime | None = None) -> dict[str, float | int]:
     ts = _as_utc(now)
     if not pattern_docs:
@@ -517,7 +528,7 @@ def summarize_monitor_patterns(pattern_docs: list[dict[str, Any]], *, now: datet
     manual_review_patterns = sum(1 for doc in pattern_docs if doc.get("manual_review_required", False))
     total_lines_filtered = sum(int(doc.get("stats", {}).get("total_lines_filtered", 0)) for doc in pattern_docs)
     lines_filtered_7d = sum(
-        _sum_recent_filter_events(doc.get("stats", {}).get("recent_filter_events", []), ts, days=7)
+        sum_recent_filter_events(doc.get("stats", {}).get("recent_filter_events", []), ts, days=7)
         for doc in pattern_docs
     )
     avg_confidence = sum(float(doc.get("confidence", 0.0)) for doc in pattern_docs) / learned_patterns

@@ -1,6 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -18,21 +17,13 @@ from app.schemas.noise_learning import (
 )
 from app.services.monitor_service import get_monitor
 from app.utils.pagination import PaginationParams
-from workers.scraper.adaptive_noise_learning import LEARNED_PATTERNS_COLLECTION, summarize_monitor_patterns
+from workers.scraper.adaptive_noise_learning import (
+    LEARNED_PATTERNS_COLLECTION,
+    sum_recent_filter_events,
+    summarize_monitor_patterns,
+)
 
 router = APIRouter(tags=["noise-learning"])
-
-
-def _sum_lines_filtered_recent(events: list[dict[str, Any]], *, now: datetime, days: int = 7) -> int:
-    cutoff = now - timedelta(days=days)
-    total = 0
-    for event in events:
-        at = event.get("at")
-        if isinstance(at, datetime):
-            ts = at if at.tzinfo else at.replace(tzinfo=timezone.utc)
-            if ts >= cutoff:
-                total += int(event.get("count", 0))
-    return total
 
 
 @router.get("/monitors/{monitor_id}/noise-learning", response_model=MonitorNoiseLearningRead)
@@ -66,7 +57,7 @@ async def get_monitor_noise_learning(
                 is_active=bool(doc.get("is_active", False)),
                 manual_review_required=bool(doc.get("manual_review_required", False)),
                 blocked_reason=doc.get("blocked_reason"),
-                lines_filtered_7d=_sum_lines_filtered_recent(stats.get("recent_filter_events", []), now=now, days=7),
+                lines_filtered_7d=sum_recent_filter_events(stats.get("recent_filter_events", []), now, days=7),
                 total_lines_filtered=int(stats.get("total_lines_filtered", 0)),
                 first_seen_at=doc.get("first_seen_at"),
                 last_seen_at=doc.get("last_seen_at"),
@@ -153,7 +144,7 @@ async def get_noise_learning_overview(
     )
 
     total = len(items)
-    start = (pagination.page - 1) * pagination.per_page
+    start = pagination.offset
     end = start + pagination.per_page
     return pagination.paginate(items[start:end], total)
 

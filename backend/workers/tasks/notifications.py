@@ -47,7 +47,7 @@ def send_notifications(self, alert_id: str) -> dict:
     db = get_sync_db()
 
     try:
-        # Load alert
+        # load alert
         alert = db.execute(select(Alert).where(Alert.id == alert_id)).scalar_one_or_none()
         if not alert:
             logger.error("notify_alert_not_found", alert_id=alert_id)
@@ -221,18 +221,22 @@ def send_daily_digest() -> dict:
             user_id = digest_entry["user_id"]
             channel = digest_entry["channel"]
 
-            # Load alerts
+            # load alerts
             alerts = list(db.execute(select(Alert).where(Alert.id.in_(alert_ids))).scalars().all())
 
             if not alerts:
                 mongo_db.digest_queue.delete_one({"_id": digest_entry["_id"]})
                 continue
 
-            # Build digest summary
+            # batch-load monitors to avoid n+1 queries inside the loop
+            monitor_ids = list({alert.monitor_id for alert in alerts})
+            monitors_result = db.execute(select(Monitor).where(Monitor.id.in_(monitor_ids)))
+            monitor_lookup = {m.id: m.name for m in monitors_result.scalars().all()}
+
+            # build digest summary
             lines = [f"📊 **Daily Digest** — {len(alerts)} alert(s)\n"]
             for alert in alerts:
-                monitor = db.execute(select(Monitor).where(Monitor.id == alert.monitor_id)).scalar_one_or_none()
-                monitor_name = monitor.name if monitor else "Unknown"
+                monitor_name = monitor_lookup.get(alert.monitor_id, "Unknown")
                 lines.append(f"• [{alert.severity.upper()}] {monitor_name}: {alert.summary[:100]}")
 
             digest_text = "\n".join(lines)
