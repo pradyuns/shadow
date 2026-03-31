@@ -290,23 +290,28 @@ class TestSendDailyDigest:
         monitor = MagicMock()
         monitor.name = "Test Monitor"
 
-        # Mock setting
+        # mock notification setting
         setting = MagicMock()
+        setting.user_id = "user-1"
+        setting.channel = "slack"
         setting.slack_webhook_url = "https://hooks.slack.com/test"
         setting.email_address = None
 
-        # DB execute calls: alerts query, monitor query, setting query
+        # db execute order: (1) batch settings, (2) alerts, (3) monitors
         call_count = [0]
 
         def db_execute_side_effect(*args, **kwargs):
             call_count[0] += 1
             mock_result = MagicMock()
             if call_count[0] == 1:
-                mock_result.scalars.return_value.all.return_value = [alert]
+                # batch settings load
+                mock_result.scalars.return_value.all.return_value = [setting]
             elif call_count[0] == 2:
-                mock_result.scalar_one_or_none.return_value = monitor
+                # alerts by id
+                mock_result.scalars.return_value.all.return_value = [alert]
             else:
-                mock_result.scalar_one_or_none.return_value = setting
+                # monitors batch
+                mock_result.scalars.return_value.all.return_value = [monitor]
             return mock_result
 
         db.execute.side_effect = db_execute_side_effect

@@ -103,6 +103,7 @@ def send_notifications(self, alert_id: str) -> dict:
         slack_sent = False
         email_sent = False
         errors = []
+        mongo_db = None
 
         for setting in user_settings:
             if not setting.is_enabled:
@@ -119,9 +120,10 @@ def send_notifications(self, alert_id: str) -> dict:
                 )
                 continue
 
-            # Digest mode: queue for later
+            # digest mode: queue for batch delivery instead of sending now
             if setting.digest_mode:
-                mongo_db = get_sync_mongo_db()
+                if mongo_db is None:
+                    mongo_db = get_sync_mongo_db()
                 mongo_db.digest_queue.update_one(
                     {
                         "user_id": str(alert.user_id),
@@ -218,6 +220,18 @@ def send_daily_digest() -> dict:
         if not pending_digests:
             return {"digests_sent": 0}
 
+        # batch-load all notification settings to avoid n+1 per digest entry
+        all_pairs = [(d["user_id"], d["channel"]) for d in pending_digests]
+        all_user_ids = list({p[0] for p in all_pairs})
+        all_settings = list(
+            db.execute(
+                select(NotificationSetting).where(NotificationSetting.user_id.in_(all_user_ids))
+            )
+            .scalars()
+            .all()
+        )
+        settings_lookup = {(str(s.user_id), s.channel): s for s in all_settings}
+
         digests_sent = 0
 
         for digest_entry in pending_digests:
@@ -249,13 +263,8 @@ def send_daily_digest() -> dict:
 
             digest_text = "\n".join(lines)
 
-            # Load channel config
-            setting = db.execute(
-                select(NotificationSetting).where(
-                    NotificationSetting.user_id == user_id,
-                    NotificationSetting.channel == channel,
-                )
-            ).scalar_one_or_none()
+            # look up pre-fetched setting for this user/channel pair
+            setting = settings_lookup.get((user_id, channel))
 
             if setting:
                 try:
