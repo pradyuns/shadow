@@ -174,17 +174,13 @@ def seed():
 
     with Session(engine) as db:
         # Check if demo data already exists
-        existing = db.execute(
-            text("SELECT COUNT(*) FROM monitors WHERE competitor_name = 'Acme Analytics'")
-        ).scalar()
+        existing = db.execute(text("SELECT COUNT(*) FROM monitors WHERE competitor_name = 'Acme Analytics'")).scalar()
         if existing and existing > 0:
             print("Demo data already exists. Skipping seed.")
             return
 
         # Get or create a demo user
-        demo_user = db.execute(
-            text("SELECT id FROM users WHERE email = 'demo@shadow.io'")
-        ).fetchone()
+        demo_user = db.execute(text("SELECT id FROM users WHERE email = 'demo@shadow.io'")).fetchone()
 
         if not demo_user:
             user_id = str(uuid.uuid4())
@@ -338,17 +334,19 @@ def seed():
                             analysis_oid = str(analysis_result.inserted_id)
                             diff_analysis_map[diff_oid] = analysis_oid
 
-                        alert_data.append({
-                            "id": str(uuid.uuid4()),
-                            "monitor_id": monitor_id,
-                            "user_id": user_id,
-                            "severity": severity,
-                            "summary": f"Change detected on {comp_name} {page_type} page",
-                            "diff_id": diff_oid,
-                            "analysis_id": analysis_oid,
-                            "is_acknowledged": random.random() < 0.6,
-                            "created_at": snap_time,
-                        })
+                        alert_data.append(
+                            {
+                                "id": str(uuid.uuid4()),
+                                "monitor_id": monitor_id,
+                                "user_id": user_id,
+                                "severity": severity,
+                                "summary": f"Change detected on {comp_name} {page_type} page",
+                                "diff_id": diff_oid,
+                                "analysis_id": analysis_oid,
+                                "is_acknowledged": random.random() < 0.6,
+                                "created_at": snap_time,
+                            }
+                        )
 
                 prev_snapshot_id = snapshot_id
                 prev_text = text_content
@@ -413,8 +411,12 @@ def seed():
                 if cluster["competitor"] != competitor or cluster.get("closed"):
                     continue
                 scores = compute_similarity(
-                    a_categories, a_keywords, a_time,
-                    cluster["categories"], cluster["keywords"], cluster["time"],
+                    a_categories,
+                    a_keywords,
+                    a_time,
+                    cluster["categories"],
+                    cluster["keywords"],
+                    cluster["time"],
                 )
                 if scores["combined"] > best_score:
                     best_score = scores["combined"]
@@ -430,17 +432,19 @@ def seed():
                     best_cluster["severity"] = a["severity"]
             else:
                 cluster_id = str(uuid.uuid4())
-                clusters.append({
-                    "id": cluster_id,
-                    "competitor": competitor,
-                    "title": _generate_cluster_title(competitor, list(a_categories), a["summary"]),
-                    "categories": a_categories,
-                    "keywords": a_keywords,
-                    "time": a_time,
-                    "alert_ids": [a["id"]],
-                    "alert_count": 1,
-                    "severity": a["severity"],
-                })
+                clusters.append(
+                    {
+                        "id": cluster_id,
+                        "competitor": competitor,
+                        "title": _generate_cluster_title(competitor, list(a_categories), a["summary"]),
+                        "categories": a_categories,
+                        "keywords": a_keywords,
+                        "time": a_time,
+                        "alert_ids": [a["id"]],
+                        "alert_count": 1,
+                        "severity": a["severity"],
+                    }
+                )
                 cluster_count += 1
 
         # Write clusters to DB

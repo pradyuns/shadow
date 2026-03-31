@@ -51,6 +51,7 @@ GLOBAL_NOISE_PATTERNS = [
     r"__cf_bm=",  # Cloudflare bot management
 ]
 
+
 @dataclass(frozen=True)
 class CompiledNoisePattern:
     regex: re.Pattern
@@ -90,7 +91,9 @@ class FilterResult:
     learned_pattern_hits: dict[str, int] = field(default_factory=dict)
 
 
-def _classify_noise_line(line: str, compiled_patterns: list[CompiledNoisePattern | re.Pattern]) -> tuple[bool, set[str]]:
+def _classify_noise_line(
+    line: str, compiled_patterns: list[CompiledNoisePattern | re.Pattern]
+) -> tuple[bool, set[str]]:
     """Check if a diff line's content is entirely explained by noise patterns.
 
     A line is noise if removing all noise-pattern matches leaves only whitespace

@@ -511,7 +511,9 @@ def learn_patterns_from_diff(
 
 
 # aggregate stats across all learned patterns for a single monitor
-def summarize_monitor_patterns(pattern_docs: list[dict[str, Any]], *, now: datetime | None = None) -> dict[str, float | int]:
+def summarize_monitor_patterns(
+    pattern_docs: list[dict[str, Any]], *, now: datetime | None = None
+) -> dict[str, float | int]:
     ts = _as_utc(now)
     if not pattern_docs:
         return {

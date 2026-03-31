@@ -224,9 +224,7 @@ def scrape_single_url(self, monitor_id: str) -> dict:
                 if monitor.consecutive_failures >= 5:
                     monitor.is_active = False
                     db.commit()
-                    logger.warning(
-                        "monitor_auto_paused", monitor_id=monitor_id, failures=monitor.consecutive_failures
-                    )
+                    logger.warning("monitor_auto_paused", monitor_id=monitor_id, failures=monitor.consecutive_failures)
 
                 if e.is_retryable and self.request.retries < self.max_retries:
                     raise self.retry(exc=e, countdown=10 * (2**self.request.retries))
@@ -240,11 +238,7 @@ def scrape_single_url(self, monitor_id: str) -> dict:
         )
 
         # Bot detection fallback: if primary scraper got a CAPTCHA page, retry with Firecrawl
-        if (
-            not used_firecrawl
-            and firecrawl_scraper
-            and _looks_like_bot_detection(extraction["extracted_text"])
-        ):
+        if not used_firecrawl and firecrawl_scraper and _looks_like_bot_detection(extraction["extracted_text"]):
             logger.info(
                 "scrape_bot_detected_trying_firecrawl",
                 monitor_id=monitor_id,

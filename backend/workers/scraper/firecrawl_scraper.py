@@ -83,11 +83,7 @@ class FirecrawlScraper(BaseScraper):
             # Extract real HTTP status from metadata when available
             http_status = 200
             if response.metadata:
-                meta = (
-                    response.metadata
-                    if isinstance(response.metadata, dict)
-                    else response.metadata.model_dump()
-                )
+                meta = response.metadata if isinstance(response.metadata, dict) else response.metadata.model_dump()
                 http_status = meta.get("statusCode", meta.get("status_code", 200))
 
             logger.info(

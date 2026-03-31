@@ -46,4 +46,6 @@ def get_firecrawl_scraper():
 
     from workers.scraper.firecrawl_scraper import FirecrawlScraper
 
-    return FirecrawlScraper()
+    # Pass the resolved key explicitly so tests/config overrides on this module
+    # don't depend on internals of firecrawl_scraper.settings.
+    return FirecrawlScraper(api_key=settings.firecrawl_api_key)

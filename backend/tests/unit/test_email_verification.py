@@ -198,9 +198,7 @@ class TestVerifyEmailEndpoint:
 
         app.dependency_overrides[get_db] = _override
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False
-        ) as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False) as ac:
             response = await ac.get(f"/api/v1/auth/verify-email?token={token}")
 
         assert response.status_code == 307
@@ -210,9 +208,7 @@ class TestVerifyEmailEndpoint:
 
     @pytest.mark.asyncio
     async def test_verify_email_with_invalid_token(self):
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False
-        ) as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False) as ac:
             response = await ac.get("/api/v1/auth/verify-email?token=invalid-token")
 
         assert response.status_code == 307
@@ -224,9 +220,7 @@ class TestVerifyEmailEndpoint:
 
         token = create_access_token({"sub": str(uuid.uuid4())})
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False
-        ) as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False) as ac:
             response = await ac.get(f"/api/v1/auth/verify-email?token={token}")
 
         assert response.status_code == 307
@@ -255,9 +249,7 @@ class TestVerifyEmailEndpoint:
 
         app.dependency_overrides[get_db] = _override
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False
-        ) as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", follow_redirects=False) as ac:
             response = await ac.get(f"/api/v1/auth/verify-email?token={token}")
 
         assert response.status_code == 307

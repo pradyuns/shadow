@@ -49,4 +49,3 @@ class NoiseLearningOverviewItem(BaseModel):
     manual_review_patterns: int
     lines_filtered_7d: int
     avg_confidence: float
-

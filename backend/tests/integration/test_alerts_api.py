@@ -36,6 +36,7 @@ def _mock_alert(user_id, **overrides):
         "diff_id": "507f1f77bcf86cd799439011",
         "analysis_id": "507f1f77bcf86cd799439012",
         "is_acknowledged": False,
+        "cluster_id": None,
         "acknowledged_at": None,
         "notified_via_slack": False,
         "notified_via_email": False,
