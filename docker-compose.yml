@@ -94,8 +94,9 @@ services:
       SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-alerts@localhost}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5174
       LOG_LEVEL: debug
+      PUBLIC_LANDING_ONLY_MODE: ${PUBLIC_LANDING_ONLY_MODE:-false}
     volumes:
       - ./backend:/app
     depends_on:

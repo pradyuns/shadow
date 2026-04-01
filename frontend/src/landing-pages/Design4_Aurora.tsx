@@ -688,21 +688,21 @@ function DashboardMockup() {
 const features = [
   {
     title: 'Always-on monitoring',
-    desc: 'Point Shadow at any competitor page — pricing, changelogs, feature lists, docs, hiring. It watches on your schedule so nothing slips through.',
+    desc: 'Monitor any competitor page: pricing, changelogs, feature lists, docs, and hiring pages. Shadow checks on your schedule so nothing slips through.',
     Icon: Eye,
     iconBg: '#eff6ff',
     iconColor: '#2563eb',
   },
   {
     title: 'Precise diff detection',
-    desc: 'Every revision is compared line-by-line against the last snapshot. You see exactly what changed, when, and how significant it is — no noise.',
+    desc: 'Every revision is compared line by line against the last snapshot. You see exactly what changed, when it changed, and how significant it is without noise.',
     Icon: GitCompareArrows,
     iconBg: '#ecfdf5',
     iconColor: '#059669',
   },
   {
     title: 'Instant alert routing',
-    desc: 'Changes are ranked by impact and routed to your team in seconds. Critical pricing shifts surface before minor copy tweaks. Slack, email, or both.',
+    desc: 'Meaningful changes are ranked by impact and routed by severity. Send alerts to Slack, email, or both channels.',
     Icon: Zap,
     iconBg: '#fffbeb',
     iconColor: '#d97706',
@@ -712,7 +712,7 @@ const features = [
 const steps = [
   { num: '01', title: 'Add your sources', desc: 'Enter competitor URLs, select page types, and set how frequently Shadow should check for changes.' },
   { num: '02', title: 'Shadow captures and compares', desc: 'Full page snapshots are stored automatically. Every change is detected and logged after each check.' },
-  { num: '03', title: 'Triage what matters', desc: 'Alerts route to your team ranked by severity. Acknowledge, investigate, or delegate — all from one queue.' },
+  { num: '03', title: 'Triage what matters', desc: 'Alerts route to your team ranked by severity. Acknowledge, investigate, or delegate from one queue.' },
 ]
 
 const pageTypes = [
@@ -778,9 +778,8 @@ export default function AuroraLanding() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
             <a href="#features" className="sh-nav-link">Features</a>
-            <Link to="/login" className="sh-nav-link">Sign in</Link>
-            <Link to="/register" className="sh-btn sh-btn-dark" style={{ fontSize: 14, padding: '10px 20px' }}>
-              Get started <ArrowRight size={14} />
+            <Link to="/closed-beta" className="sh-btn sh-btn-dark" style={{ fontSize: 14, padding: '10px 20px' }}>
+              Join closed beta <ArrowRight size={14} />
             </Link>
           </div>
         </div>
@@ -828,11 +827,8 @@ export default function AuroraLanding() {
               marginTop: 32, display: 'flex', alignItems: 'center', gap: 12,
               ...stagger(3),
             }}>
-              <Link to="/register" className="sh-btn sh-btn-dark" style={{ fontSize: 15, padding: '14px 28px' }}>
-                Start monitoring <ArrowRight size={16} />
-              </Link>
-              <Link to="/login" className="sh-btn sh-btn-outline" style={{ fontSize: 15, padding: '14px 24px' }}>
-                Sign in
+              <Link to="/closed-beta" className="sh-btn sh-btn-dark" style={{ fontSize: 15, padding: '14px 28px' }}>
+                Join closed beta <ArrowRight size={16} />
               </Link>
             </div>
           </div>
@@ -986,20 +982,17 @@ export default function AuroraLanding() {
               fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 700,
               color: '#fff', letterSpacing: '-0.025em', maxWidth: 480,
             }}>
-              Start monitoring your competitive landscape today
+              Join closed beta
             </h2>
             <p style={{ marginTop: 12, fontSize: 15, color: '#94a3b8', maxWidth: 420, lineHeight: 1.6 }}>
-              Set up your first monitor in under two minutes. No credit card required.
+              Share your email to join the closed beta list.
             </p>
             <div className="sh-cta-row" style={{ marginTop: 28, display: 'flex', gap: 12, alignItems: 'center' }}>
-              <Link to="/register" className="sh-btn sh-btn-outline" style={{
+              <Link to="/closed-beta" className="sh-btn sh-btn-outline" style={{
                 fontSize: 15, padding: '14px 28px', background: '#fff', color: '#0f172a',
                 border: 'none',
               }}>
-                Create free account <ArrowRight size={16} />
-              </Link>
-              <Link to="/login" className="sh-nav-link" style={{ fontSize: 14, fontWeight: 500, color: '#94a3b8' }}>
-                or sign in
+                Join closed beta <ArrowRight size={16} />
               </Link>
             </div>
           </div>
@@ -1017,8 +1010,7 @@ export default function AuroraLanding() {
             <span style={{ fontSize: 15, fontWeight: 600, color: '#94a3b8', letterSpacing: '-0.02em' }}>Shadow</span>
           </div>
           <div style={{ display: 'flex', gap: 20 }}>
-            <Link to="/login" className="sh-nav-link" style={{ fontSize: 13 }}>Sign in</Link>
-            <Link to="/register" className="sh-nav-link" style={{ fontSize: 13 }}>Get started</Link>
+            <Link to="/closed-beta" className="sh-nav-link" style={{ fontSize: 13 }}>Join closed beta</Link>
           </div>
         </div>
       </footer>
