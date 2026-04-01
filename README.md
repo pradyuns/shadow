@@ -134,6 +134,14 @@ This keeps `/api/v1/public/*` and health endpoints available while disabling pri
   - `SEED_DEMO_PASSWORD`
 - If those env vars are not set, the seed script generates random passwords per run and prints them once.
 
+### Firecrawl (Optional)
+
+- Set `FIRECRAWL_API_KEY` in `.env` to enable Firecrawl integration.
+- When configured, Firecrawl can be used as:
+  - automatic fallback for bot-detection pages
+  - primary scraper for monitors with `use_firecrawl=true`
+- If `FIRECRAWL_API_KEY` is not set, the app runs normally with httpx/Playwright only.
+
 ### Backend Tests
 
 ```bash
