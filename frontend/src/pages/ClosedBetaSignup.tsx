@@ -2,7 +2,6 @@ import { ArrowLeft, ArrowRight, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
-import api, { extractApiErrorMessage } from '../lib/api'
 
 export default function ClosedBetaSignup() {
   const [email, setEmail] = useState('')
@@ -16,10 +15,15 @@ export default function ClosedBetaSignup() {
     setErrorMessage(null)
 
     try {
-      await api.post('/public/beta-signups', { email })
+      const res = await fetch('https://formspree.io/f/xvzvqggo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) throw new Error('Submission failed')
       setSubmitted(true)
-    } catch (error: unknown) {
-      setErrorMessage(extractApiErrorMessage(error, 'Unable to submit right now. Please try again.'))
+    } catch {
+      setErrorMessage('Unable to submit right now. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -33,11 +37,7 @@ export default function ClosedBetaSignup() {
           Back to landing page
         </Link>
 
-        <div className="page-kicker">Closed beta</div>
-        <h1 className="page-title mt-3">Join closed beta</h1>
-        <p className="page-subtitle mt-3">
-          Enter your email to join the closed beta list.
-        </p>
+        <h1 className="page-title">Get early access</h1>
 
         {submitted ? (
           <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
@@ -68,7 +68,7 @@ export default function ClosedBetaSignup() {
             )}
 
             <button className="btn-primary w-full" type="submit" disabled={loading}>
-              {loading ? 'Submitting...' : 'Join closed beta'}
+              {loading ? 'Submitting...' : 'Request access'}
               {!loading && <ArrowRight className="h-4 w-4" />}
             </button>
           </form>
