@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     log_format: str = "console"  # "json" for production, "console" for development
     enable_docs: bool = True
     enable_metrics: bool = True
+    public_landing_only_mode: bool = False
 
     # PostgreSQL
     database_url: str = "postgresql+asyncpg://compmon:changeme@postgres:5432/compmon"
@@ -56,7 +57,7 @@ class Settings(BaseSettings):
     email_verification_token_expire_hours: int = 24
 
     # CORS
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    cors_origins: str = "http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5174"
 
     @property
     def cors_origin_list(self) -> list[str]:
