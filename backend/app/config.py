@@ -1,6 +1,9 @@
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEFAULT_INSECURE_JWT_SECRET = "change-this-to-a-random-secret-key"
 
 
 class Settings(BaseSettings):
@@ -78,6 +81,13 @@ class Settings(BaseSettings):
     diff_ttl_days: int = 180
     analysis_ttl_days: int = 365
     deleted_monitor_retention_days: int = 30
+
+    @model_validator(mode="after")
+    def validate_jwt_secret_key(self) -> "Settings":
+        secret = self.jwt_secret_key.strip()
+        if not secret or secret == DEFAULT_INSECURE_JWT_SECRET:
+            raise ValueError("JWT_SECRET_KEY must be set to a unique non-default value")
+        return self
 
 
 settings = Settings()

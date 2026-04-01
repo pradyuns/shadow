@@ -1,7 +1,5 @@
 """Tests for URL and regex validators."""
 
-import pytest
-
 from app.utils.validators import validate_regex_pattern, validate_url_safe
 
 
@@ -80,6 +78,15 @@ class TestValidateUrlSafe:
     def test_accepts_url_with_path_and_query(self):
         ok, err = validate_url_safe("https://example.com/page?foo=bar&baz=1")
         assert ok is True
+
+    def test_rejects_unparseable_dns_resolution_ip(self, monkeypatch):
+        def fake_getaddrinfo(*args, **kwargs):
+            return [(0, 0, 0, "", ("not-an-ip-address", 0))]
+
+        monkeypatch.setattr("app.utils.validators.socket.getaddrinfo", fake_getaddrinfo)
+        ok, err = validate_url_safe("https://example.com/pricing")
+        assert ok is False
+        assert "private/reserved ip" in err.lower()
 
 
 class TestValidateRegexPattern:
