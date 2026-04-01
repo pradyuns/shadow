@@ -16,6 +16,17 @@ from app.utils.pagination import PaginationParams
 router = APIRouter(tags=["snapshots"])
 
 
+def _parse_monitor_id(value: Any) -> uuid.UUID | None:
+    if isinstance(value, uuid.UUID):
+        return value
+    if isinstance(value, str):
+        try:
+            return uuid.UUID(value)
+        except ValueError:
+            return None
+    return None
+
+
 @router.get("/monitors/{monitor_id}/snapshots", response_model=dict)
 async def list_snapshots(
     monitor_id: uuid.UUID,
@@ -51,6 +62,7 @@ async def get_snapshot(
     snapshot_id: str,
     include_html: bool = Query(default=False),
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> SnapshotDetail:
     mongo_db = get_mongo_db()
     try:
@@ -61,6 +73,14 @@ async def get_snapshot(
     projection = None if include_html else {"raw_html": 0}
     doc = await mongo_db.snapshots.find_one({"_id": oid}, projection)
     if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Snapshot not found")
+
+    monitor_id = _parse_monitor_id(doc.get("monitor_id"))
+    if monitor_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Snapshot not found")
+
+    monitor = await get_monitor(db, monitor_id, user.id)
+    if not monitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Snapshot not found")
 
     doc["id"] = str(doc.pop("_id"))

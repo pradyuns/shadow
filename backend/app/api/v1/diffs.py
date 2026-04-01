@@ -16,6 +16,17 @@ from app.utils.pagination import PaginationParams
 router = APIRouter(tags=["diffs"])
 
 
+def _parse_monitor_id(value: Any) -> uuid.UUID | None:
+    if isinstance(value, uuid.UUID):
+        return value
+    if isinstance(value, str):
+        try:
+            return uuid.UUID(value)
+        except ValueError:
+            return None
+    return None
+
+
 @router.get("/monitors/{monitor_id}/diffs", response_model=dict)
 async def list_diffs(
     monitor_id: uuid.UUID,
@@ -55,6 +66,7 @@ async def list_diffs(
 async def get_diff(
     diff_id: str,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> DiffDetail:
     mongo_db = get_mongo_db()
     try:
@@ -64,6 +76,14 @@ async def get_diff(
 
     doc = await mongo_db.diffs.find_one({"_id": oid})
     if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diff not found")
+
+    monitor_id = _parse_monitor_id(doc.get("monitor_id"))
+    if monitor_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diff not found")
+
+    monitor = await get_monitor(db, monitor_id, user.id)
+    if not monitor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diff not found")
 
     doc["id"] = str(doc.pop("_id"))
