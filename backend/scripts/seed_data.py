@@ -8,6 +8,8 @@ Requires DATABASE_URL_SYNC to be set (or .env file).
 Creates sample users, monitors, and alerts for local development.
 """
 
+import os
+import secrets
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -18,6 +20,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config import settings  # noqa: E402
 from app.utils.security import hash_password  # noqa: E402
+
+
+def _get_seed_password(env_var_name: str) -> tuple[str, bool]:
+    password = os.getenv(env_var_name)
+    if password:
+        return password, True
+    return secrets.token_urlsafe(16), False
 
 
 def seed():
@@ -41,12 +50,14 @@ def seed():
             return
 
         now = datetime.now(timezone.utc)
+        admin_password, admin_password_from_env = _get_seed_password("SEED_ADMIN_PASSWORD")
+        demo_password, demo_password_from_env = _get_seed_password("SEED_DEMO_PASSWORD")
 
         # Create users
         admin = User(
             id=uuid.uuid4(),
             email="admin@example.com",
-            password_hash=hash_password("admin123"),
+            password_hash=hash_password(admin_password),
             full_name="Admin User",
             is_active=True,
             is_admin=True,
@@ -55,7 +66,7 @@ def seed():
         demo_user = User(
             id=uuid.uuid4(),
             email="demo@example.com",
-            password_hash=hash_password("demo123"),
+            password_hash=hash_password(demo_password),
             full_name="Demo User",
             is_active=True,
             is_admin=False,
@@ -169,8 +180,11 @@ def seed():
 
         db.commit()
 
+        admin_password_display = "<from SEED_ADMIN_PASSWORD>" if admin_password_from_env else admin_password
+        demo_password_display = "<from SEED_DEMO_PASSWORD>" if demo_password_from_env else demo_password
+
         print("Seed data created successfully!")
-        print("  Users: 2 (admin@example.com / admin123, demo@example.com / demo123)")
+        print(f"  Users: 2 (admin@example.com / {admin_password_display}, demo@example.com / {demo_password_display})")
         print(f"  Monitors: {len(monitors)}")
         print(f"  Alerts: {len(severities)}")
         print("  Notification settings: 2 (slack, email)")

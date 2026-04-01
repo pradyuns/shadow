@@ -10,7 +10,7 @@ def _is_ip_safe(ip_str: str) -> bool:
         ip = ipaddress.ip_address(ip_str)
         return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved)
     except ValueError:
-        return True
+        return False
 
 
 def validate_url_safe(url: str) -> tuple[bool, str | None]:

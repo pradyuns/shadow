@@ -125,6 +125,15 @@ PUBLIC_LANDING_ONLY_MODE=true
 
 This keeps `/api/v1/public/*` and health endpoints available while disabling private product APIs from the public deployment surface.
 
+### Security Config (Required)
+
+- `JWT_SECRET_KEY` must be set to a unique non-default value.
+- The API will refuse startup if `JWT_SECRET_KEY` is empty or still set to `change-this-to-a-random-secret-key`.
+- Seed credentials are not hardcoded. `backend/scripts/seed_data.py` reads:
+  - `SEED_ADMIN_PASSWORD`
+  - `SEED_DEMO_PASSWORD`
+- If those env vars are not set, the seed script generates random passwords per run and prints them once.
+
 ### Backend Tests
 
 ```bash
