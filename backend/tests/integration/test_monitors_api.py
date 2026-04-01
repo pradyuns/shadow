@@ -243,3 +243,4 @@ class TestTriggerScrape:
 
         assert response.status_code == 202
         assert response.json()["status"] == "accepted"
+        mock_scrape.delay.assert_called_once_with(str(monitor.id), force=True)
