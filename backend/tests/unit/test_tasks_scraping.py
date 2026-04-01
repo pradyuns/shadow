@@ -168,6 +168,65 @@ class TestScrapeSingleUrl:
         result = scrape_single_url("mon-1")
         assert result["status"] == "skipped_recent"
 
+    @patch("workers.tasks.diffing.compute_diff")
+    @patch("workers.scraper.text_extractor.extract_text")
+    @patch("workers.scraper.factory.get_firecrawl_scraper")
+    @patch("workers.scraper.factory.get_scraper")
+    @patch("app.db.mongodb_sync.get_sync_mongo_db")
+    @patch("app.db.postgres_sync.get_sync_db")
+    def test_force_scrape_bypasses_recent(
+        self,
+        mock_pg,
+        mock_mongo,
+        mock_get_scraper,
+        mock_get_firecrawl,
+        mock_extract,
+        mock_diff,
+    ):
+        from workers.tasks.scraping import scrape_single_url
+
+        db = MagicMock()
+        mock_pg.return_value = db
+        mongo_db = MagicMock()
+        mock_mongo.return_value = mongo_db
+
+        monitor = MagicMock()
+        monitor.id = "mon-1"
+        monitor.is_active = True
+        monitor.deleted_at = None
+        monitor.last_checked_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+        monitor.url = "https://example.com"
+        monitor.render_js = False
+        monitor.use_firecrawl = False
+        monitor.css_selector = None
+        monitor.page_type = "pricing"
+        monitor.check_interval_hours = 6
+        monitor.consecutive_failures = 0
+        db.execute.return_value.scalar_one_or_none.return_value = monitor
+
+        mock_get_firecrawl.return_value = None
+
+        scraper = MagicMock()
+        mock_get_scraper.return_value = scraper
+        scrape_result = MagicMock()
+        scrape_result.raw_html = "<html>Hello</html>"
+        scrape_result.http_status = 200
+        scrape_result.render_method = "httpx"
+        scrape_result.fetch_duration_ms = 100
+        scraper.fetch.return_value = scrape_result
+
+        mock_extract.return_value = {
+            "extracted_text": "Hello",
+            "text_hash": "abc123",
+            "text_length": 5,
+            "auto_upgrade_js": False,
+        }
+        mongo_db.snapshots.insert_one.return_value = MagicMock(inserted_id="snap-1")
+
+        result = scrape_single_url("mon-1", force=True)
+        assert result["status"] == "success"
+        mock_diff.delay.assert_called_once()
+
     @patch("workers.scraper.factory.get_firecrawl_scraper")
     @patch("workers.scraper.factory.get_scraper")
     @patch("app.db.mongodb_sync.get_sync_mongo_db")

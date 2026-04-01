@@ -123,5 +123,5 @@ async def trigger_scrape(
 
     from workers.tasks.scraping import scrape_single_url
 
-    task = scrape_single_url.delay(str(monitor.id))
+    task = scrape_single_url.delay(str(monitor.id), force=True)
     return {"task_id": task.id, "status": "accepted"}
