@@ -93,6 +93,7 @@ class PlaywrightScraper(BaseScraper):
     def fetch(self, url: str, timeout_seconds: int = 30, css_selector: str | None = None) -> ScrapeResult:
         start_ms = time.monotonic()
         browser = _get_browser()
+        context = None
         page = None
 
         try:
@@ -180,6 +181,11 @@ class PlaywrightScraper(BaseScraper):
             if page:
                 try:
                     page.close()
+                except Exception:
+                    pass
+            if context:
+                try:
+                    context.close()
                 except Exception:
                     pass
 
