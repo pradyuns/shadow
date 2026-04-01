@@ -6,6 +6,7 @@ import {
   Eye,
   FileText,
   GitCompareArrows,
+  Github,
   LayoutDashboard,
   Radar,
   Settings,
@@ -53,6 +54,15 @@ const scopedStyles = `
   .sh-landing .sh-btn-outline:hover,
   .sh-landing a.sh-btn-outline:hover {
     background: #f8fafc; border-color: #cbd5e1;
+  }
+
+  .sh-landing .sh-btn-light,
+  .sh-landing a.sh-btn-light {
+    background: transparent; color: #e2e8f0; border: 1px solid rgba(148, 163, 184, 0.45);
+  }
+  .sh-landing .sh-btn-light:hover,
+  .sh-landing a.sh-btn-light:hover {
+    background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.7);
   }
 
   .sh-landing .sh-nav-link,
@@ -723,6 +733,8 @@ const pageTypes = [
   { label: 'Hiring pages', desc: 'Signal new initiatives from role postings and team growth' },
 ]
 
+const repoUrl = 'https://github.com/pradyuns/shadow'
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Main component
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -830,6 +842,16 @@ export default function AuroraLanding() {
               <Link to="/closed-beta" className="sh-btn sh-btn-dark" style={{ fontSize: 15, padding: '14px 28px' }}>
                 Join closed beta <ArrowRight size={16} />
               </Link>
+              <a
+                href={repoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="sh-btn sh-btn-outline"
+                style={{ fontSize: 15, padding: '14px 20px' }}
+              >
+                <Github size={16} />
+                Run locally
+              </a>
             </div>
           </div>
 
@@ -994,6 +1016,16 @@ export default function AuroraLanding() {
               }}>
                 Join closed beta <ArrowRight size={16} />
               </Link>
+              <a
+                href={repoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="sh-btn sh-btn-light"
+                style={{ fontSize: 15, padding: '14px 22px' }}
+              >
+                <Github size={16} />
+                Run locally
+              </a>
             </div>
           </div>
         </Reveal>
