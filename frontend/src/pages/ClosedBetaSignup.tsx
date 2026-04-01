@@ -34,9 +34,9 @@ export default function ClosedBetaSignup() {
         </Link>
 
         <div className="page-kicker">Closed beta</div>
-        <h1 className="page-title mt-3">Request access</h1>
+        <h1 className="page-title mt-3">Join closed beta</h1>
         <p className="page-subtitle mt-3">
-          Enter your email and we will notify you when we open operating console access.
+          Enter your email to join the closed beta list.
         </p>
 
         {submitted ? (
