@@ -128,7 +128,7 @@ def initiate_scrape_cycle(batch_size: int | None = None) -> dict[str, Any]:
     time_limit=90,
     rate_limit="10/m",
 )
-def scrape_single_url(self: Any, monitor_id: str) -> dict[str, Any]:
+def scrape_single_url(self: Any, monitor_id: str, force: bool = False) -> dict[str, Any]:
     """Fetch a single URL, store snapshot in MongoDB, dispatch diff.
 
     State transitions on the monitor:
@@ -165,8 +165,8 @@ def scrape_single_url(self: Any, monitor_id: str) -> dict[str, Any]:
             logger.info("scrape_monitor_inactive", monitor_id=monitor_id)
             return {"monitor_id": monitor_id, "status": "inactive"}
 
-        # Idempotency: skip if scraped within last 30 minutes
-        if monitor.last_checked_at:
+        # Idempotency: skip if scraped within last 30 minutes unless force-triggered.
+        if monitor.last_checked_at and not force:
             minutes_ago = (datetime.now(timezone.utc) - monitor.last_checked_at).total_seconds() / 60
             if minutes_ago < 30:
                 logger.info("scrape_skipped_recent", monitor_id=monitor_id, minutes_ago=round(minutes_ago))
