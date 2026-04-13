@@ -163,16 +163,4 @@ npm run build
 - API readiness: `GET /api/v1/health/ready`
 - Flower dashboard: `http://localhost:5555`
 
-## Closed Beta Email Retrieval
 
-To list collected signup emails directly from Postgres:
-
-```sql
-SELECT email, created_at
-FROM beta_signups
-ORDER BY created_at DESC;
-```
-
-## Smoke Test Note
-
-Scheduled scraping uses idempotency protections to prevent duplicate recent work, while manual `Scrape now` is force-triggered for deterministic testing.
