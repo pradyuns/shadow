@@ -11,13 +11,11 @@ Shadow is a distributed competitor-intelligence platform for monitoring competit
 - Clusters related alerts into higher-level competitive events.
 - Delivers notifications via Slack/email (including digest mode).
 
-## Public Demo Surface
+## Deployment
 
-- The deployed public app is intentionally limited to:
-  - Landing page (`/`)
-  - Closed beta signup page (`/closed-beta`)
-- In production, set `PUBLIC_LANDING_ONLY_MODE=true` to disable non-public API routes.
-- The full backend/workers implementation remains in this repository for code review and portfolio depth.
+There is currently no linked public demo. Use the local development instructions below to run the full application.
+
+The frontend exposes the landing page (`/`) and closed beta signup page (`/closed-beta`). Set `PUBLIC_LANDING_ONLY_MODE=true` on the backend to keep public API routes and health endpoints available while disabling private product APIs.
 
 ## Architecture
 
@@ -116,6 +114,8 @@ make up
 ```bash
 make migrate
 ```
+
+Migration `006` adds persistent refresh sessions. Existing refresh tokens require a new sign-in after upgrading. See [Refresh sessions](docs/auth-session-security.md) for rotation, logout, and rollback behavior, and [Scraper network boundaries](docs/scraper-security.md) for destination validation and deployment requirements.
 
 ### Landing-Only API Mode (Production Behavior)
 
