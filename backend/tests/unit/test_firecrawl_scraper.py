@@ -21,6 +21,14 @@ def _mock_document(html="", markdown="", metadata=None):
     return doc
 
 
+@pytest.fixture(autouse=True)
+def public_dns(monkeypatch):
+    monkeypatch.setattr(
+        "app.utils.validators.socket.getaddrinfo",
+        lambda *args, **kwargs: [(2, 1, 6, "", ("93.184.216.34", 0))],
+    )
+
+
 class TestFirecrawlScraper:
     """Tests for the FirecrawlScraper class."""
 
@@ -489,3 +497,12 @@ class TestScrapeSingleUrlFirecrawlFallback:
             result = scrape_single_url("mon-4")
             assert result["status"] == "success"
             assert result["render_method"] == "firecrawl"
+
+
+def test_firecrawl_rejects_private_initial_url_without_provider_call():
+    from workers.scraper.firecrawl_scraper import FirecrawlScraper
+
+    with patch("firecrawl.FirecrawlApp") as provider:
+        with pytest.raises(ScraperError, match="Unsafe scrape URL"):
+            FirecrawlScraper(api_key="test-key").fetch("http://127.0.0.1/admin")
+    provider.assert_not_called()

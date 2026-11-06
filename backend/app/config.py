@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_INSECURE_JWT_SECRET = "change-this-to-a-random-secret-key"
@@ -81,6 +81,15 @@ class Settings(BaseSettings):
     diff_ttl_days: int = 180
     analysis_ttl_days: int = 365
     deleted_monitor_retention_days: int = 30
+
+    @field_validator("database_url_sync")
+    @classmethod
+    def select_sync_postgres_driver(cls, value: str) -> str:
+        # SQLAlchemy 2.1 changed the implicit PostgreSQL driver to psycopg 3;
+        # this project installs psycopg2. Preserve explicitly selected drivers.
+        if value.startswith("postgresql://"):
+            return "postgresql+psycopg2://" + value[len("postgresql://"):]
+        return value
 
     @model_validator(mode="after")
     def validate_jwt_secret_key(self) -> "Settings":

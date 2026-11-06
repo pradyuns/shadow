@@ -8,11 +8,13 @@ Why httpx over requests:
 """
 
 import time
+from urllib.parse import urljoin
 
 import httpx
 import structlog
 
-from workers.scraper.base import BaseScraper, ScraperError, ScrapeResult
+from app.utils.validators import validate_url_safe
+from workers.scraper.base import BaseScraper, ScraperError, ScrapeResult, UnsafeDestinationError
 
 logger = structlog.get_logger()
 
@@ -45,7 +47,8 @@ class HttpScraper(BaseScraper):
 
     def __init__(self) -> None:
         self._client = httpx.Client(
-            follow_redirects=True,
+            follow_redirects=False,
+            trust_env=False,
             max_redirects=5,
             timeout=httpx.Timeout(30.0, connect=10.0),
             # Don't verify SSL in scraper — some competitor sites have
@@ -56,16 +59,26 @@ class HttpScraper(BaseScraper):
     def fetch(self, url: str, timeout_seconds: int = 30, css_selector: str | None = None) -> ScrapeResult:
         start_ms = time.monotonic()
         try:
-            response = self._client.get(
-                url,
-                headers={
-                    "User-Agent": _get_user_agent(),
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.5",
-                    "Accept-Encoding": "gzip, deflate, br",
-                },
-                timeout=timeout_seconds,
-            )
+            current_url = url
+            for hop in range(6):
+                safe, reason = validate_url_safe(current_url, require_resolution=True)
+                if not safe:
+                    raise UnsafeDestinationError(f"Unsafe scrape URL: {reason}", url=current_url)
+                response = self._client.get(
+                    current_url,
+                    headers={
+                        "User-Agent": _get_user_agent(),
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "Accept-Language": "en-US,en;q=0.5",
+                        "Accept-Encoding": "gzip, deflate, br",
+                    },
+                    timeout=timeout_seconds,
+                )
+                if response.status_code not in (301, 302, 303, 307, 308) or not response.headers.get("location"):
+                    break
+                if hop == 5:
+                    raise ScraperError("Too many redirects", url=url, is_retryable=False)
+                current_url = urljoin(current_url, response.headers["location"])
             duration_ms = int((time.monotonic() - start_ms) * 1000)
 
             logger.info(
@@ -84,6 +97,9 @@ class HttpScraper(BaseScraper):
                 fetch_duration_ms=duration_ms,
                 final_url=str(response.url) if str(response.url) != url else None,
             )
+
+        except ScraperError:
+            raise
 
         except httpx.TimeoutException as e:
             duration_ms = int((time.monotonic() - start_ms) * 1000)

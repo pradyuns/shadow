@@ -261,3 +261,27 @@ class TestScrapeSingleUrl:
         result = scrape_single_url("mon-1")
         assert result["status"] == "failed"
         assert monitor.consecutive_failures == 1
+
+    @patch("workers.scraper.factory.get_firecrawl_scraper")
+    @patch("workers.scraper.factory.get_scraper")
+    @patch("app.db.mongodb_sync.get_sync_mongo_db")
+    @patch("app.db.postgres_sync.get_sync_db")
+    def test_unsafe_destination_does_not_fall_back_to_provider(self, mock_pg, mock_mongo, get_scraper, get_firecrawl):
+        from workers.scraper.base import UnsafeDestinationError
+        from workers.tasks.scraping import scrape_single_url
+
+        db = mock_pg.return_value
+        monitor = db.execute.return_value.scalar_one_or_none.return_value
+        monitor.is_active = True
+        monitor.deleted_at = None
+        monitor.last_checked_at = None
+        monitor.render_js = False
+        monitor.use_firecrawl = False
+        monitor.url = "https://example.com"
+        monitor.css_selector = None
+        monitor.check_interval_hours = 6
+        monitor.consecutive_failures = 0
+        get_scraper.return_value.fetch.side_effect = UnsafeDestinationError("blocked", url="http://127.0.0.1")
+
+        assert scrape_single_url("mon-1")["status"] == "failed"
+        get_firecrawl.return_value.fetch.assert_not_called()

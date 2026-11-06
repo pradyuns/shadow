@@ -18,7 +18,8 @@ from typing import Any
 import structlog
 
 from app.config import settings
-from workers.scraper.base import BaseScraper, ScraperError, ScrapeResult
+from app.utils.validators import validate_url_safe
+from workers.scraper.base import BaseScraper, ScraperError, ScrapeResult, UnsafeDestinationError
 
 logger = structlog.get_logger()
 
@@ -50,6 +51,10 @@ class FirecrawlScraper(BaseScraper):
         Raises:
             ScraperError: If the Firecrawl API call fails.
         """
+        safe, reason = validate_url_safe(url, require_resolution=True)
+        if not safe:
+            raise UnsafeDestinationError(f"Unsafe scrape URL: {reason}", url=url)
+
         from firecrawl import FirecrawlApp
 
         client = FirecrawlApp(api_key=self._api_key)

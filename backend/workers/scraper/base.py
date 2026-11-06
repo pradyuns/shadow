@@ -47,3 +47,10 @@ class ScraperError(Exception):
         super().__init__(message)
         self.url = url
         self.is_retryable = is_retryable
+
+
+class UnsafeDestinationError(ScraperError):
+    """A scrape target failed destination safety validation."""
+
+    def __init__(self, message: str, url: str):
+        super().__init__(message, url=url, is_retryable=False)

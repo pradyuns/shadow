@@ -4,11 +4,13 @@ from app.models.api_key import APIKey
 from app.models.base import Base
 from app.models.beta_signup import BetaSignup
 from app.models.monitor import Monitor
+from app.models.refresh_session import RefreshSession
 from app.models.notification_setting import NotificationSetting
 from app.models.user import User
 
 __all__ = [
     "Base",
+    "RefreshSession",
     "User",
     "Monitor",
     "Alert",

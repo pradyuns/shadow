@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +13,7 @@ from app.db.postgres import get_db
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, SessionResponse
 from app.schemas.user import UserRead
-from app.services.auth_service import authenticate_user, create_tokens, refresh_tokens, register_user
+from app.services.auth_service import authenticate_user, refresh_tokens, register_user, revoke_session, start_session
 from app.utils.security import decode_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -84,7 +84,7 @@ async def login(body: LoginRequest, response: Response, db: AsyncSession = Depen
     user = await authenticate_user(db, body.email, body.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
-    tokens = create_tokens(user)
+    tokens = await start_session(db, user)
     _set_session_cookies(response, tokens)
     return SessionResponse(status="authenticated", expires_in=int(tokens["expires_in"]))
 
@@ -95,21 +95,28 @@ async def refresh(
     response: Response,
     body: RefreshRequest | None = None,
     db: AsyncSession = Depends(get_db),
-) -> SessionResponse:
+) -> SessionResponse | JSONResponse:
     refresh_token = request.cookies.get(settings.auth_refresh_cookie_name) or (body.refresh_token if body else None)
     if not refresh_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token")
 
     tokens = await refresh_tokens(db, refresh_token)
     if not tokens:
-        _clear_session_cookies(response)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
+        error_response = JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Invalid or expired refresh token"}
+        )
+        _clear_session_cookies(error_response)
+        return error_response
     _set_session_cookies(response, tokens)
     return SessionResponse(status="authenticated", expires_in=int(tokens["expires_in"]))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(response: Response) -> None:
+async def logout(
+    request: Request, response: Response, body: RefreshRequest | None = None, db: AsyncSession = Depends(get_db)
+) -> None:
+    token = request.cookies.get(settings.auth_refresh_cookie_name) or (body.refresh_token if body else None)
+    await revoke_session(db, token)
     _clear_session_cookies(response)
 
 
