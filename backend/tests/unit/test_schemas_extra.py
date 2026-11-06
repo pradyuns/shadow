@@ -5,13 +5,7 @@ from datetime import datetime, timezone
 import pytest
 
 from app.schemas.analysis import AnalysisRead
-from app.schemas.common import (
-    ErrorDetail,
-    ErrorResponse,
-    HealthResponse,
-    PaginatedResponse,
-    ReadinessResponse,
-)
+from app.schemas.common import ErrorDetail, ErrorResponse, HealthResponse, PaginatedResponse, ReadinessResponse
 
 
 class TestAnalysisRead:

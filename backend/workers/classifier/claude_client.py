@@ -34,10 +34,7 @@ import structlog
 
 from app.config import settings
 from workers.classifier.prompts import SYSTEM_PROMPT, build_user_prompt, truncate_diff
-from workers.classifier.schemas import (
-    ChangeCategory,
-    ClassificationResult,
-)
+from workers.classifier.schemas import ChangeCategory, ClassificationResult
 
 logger = structlog.get_logger()
 

@@ -11,11 +11,7 @@ from app.db.mongodb import get_mongo_db
 from app.db.postgres import get_db
 from app.models.monitor import Monitor
 from app.models.user import User
-from app.schemas.noise_learning import (
-    LearnedNoisePatternRead,
-    MonitorNoiseLearningRead,
-    NoiseLearningOverviewItem,
-)
+from app.schemas.noise_learning import LearnedNoisePatternRead, MonitorNoiseLearningRead, NoiseLearningOverviewItem
 from app.services.monitor_service import get_monitor
 from app.utils.pagination import PaginationParams
 from workers.scraper.adaptive_noise_learning import (

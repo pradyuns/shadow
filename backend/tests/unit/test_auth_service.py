@@ -5,12 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.auth_service import (
-    authenticate_user,
-    create_tokens,
-    refresh_tokens,
-    register_user,
-)
+from app.services.auth_service import authenticate_user, create_tokens, refresh_tokens, register_user
 
 
 class TestRegisterUser:
@@ -92,7 +87,7 @@ class TestCreateTokens:
         mock_user = MagicMock()
         mock_user.id = uuid.uuid4()
 
-        tokens = create_tokens(mock_user)
+        tokens = create_tokens(mock_user, uuid.uuid4(), uuid.uuid4())
 
         assert "access_token" in tokens
         assert "refresh_token" in tokens
@@ -103,7 +98,7 @@ class TestCreateTokens:
         mock_user = MagicMock()
         mock_user.id = uuid.uuid4()
 
-        tokens = create_tokens(mock_user)
+        tokens = create_tokens(mock_user, uuid.uuid4(), uuid.uuid4())
         assert tokens["access_token"] != tokens["refresh_token"]
 
 
@@ -119,10 +114,17 @@ class TestRefreshTokens:
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_user
-        mock_db.execute.return_value = mock_result
+        rotated = MagicMock()
+        rotated.scalar_one_or_none.return_value = uuid.uuid4()
+        mock_db.execute.side_effect = [mock_result, rotated]
 
         with patch("app.services.auth_service.decode_token") as mock_decode:
-            mock_decode.return_value = {"sub": str(user_id), "type": "refresh"}
+            mock_decode.return_value = {
+                "sub": str(user_id),
+                "sid": str(uuid.uuid4()),
+                "jti": str(uuid.uuid4()),
+                "type": "refresh",
+            }
             tokens = await refresh_tokens(mock_db, "valid-refresh-token")
 
         assert tokens is not None
@@ -151,6 +153,11 @@ class TestRefreshTokens:
         mock_db.execute.return_value = mock_result
 
         with patch("app.services.auth_service.decode_token") as mock_decode:
-            mock_decode.return_value = {"sub": str(uuid.uuid4()), "type": "refresh"}
+            mock_decode.return_value = {
+                "sub": str(uuid.uuid4()),
+                "sid": str(uuid.uuid4()),
+                "jti": str(uuid.uuid4()),
+                "type": "refresh",
+            }
             tokens = await refresh_tokens(mock_db, "valid-but-user-deleted")
         assert tokens is None

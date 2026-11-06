@@ -19,7 +19,8 @@ from typing import Any
 
 import structlog
 
-from workers.scraper.base import BaseScraper, ScraperError, ScrapeResult
+from app.utils.validators import validate_url_safe
+from workers.scraper.base import BaseScraper, ScraperError, ScrapeResult, UnsafeDestinationError
 
 logger = structlog.get_logger()
 
@@ -92,9 +93,13 @@ class PlaywrightScraper(BaseScraper):
 
     def fetch(self, url: str, timeout_seconds: int = 30, css_selector: str | None = None) -> ScrapeResult:
         start_ms = time.monotonic()
+        safe, reason = validate_url_safe(url, require_resolution=True)
+        if not safe:
+            raise UnsafeDestinationError(f"Unsafe scrape URL: {reason}", url=url)
         browser = _get_browser()
         context = None
         page = None
+        blocked_navigation: list[str] = []
 
         try:
             # New context per scrape for isolation (cookies, storage)
@@ -105,6 +110,7 @@ class PlaywrightScraper(BaseScraper):
                     "Chrome/120.0.0.0 Safari/537.36"
                 ),
                 java_script_enabled=True,
+                service_workers="block",
             )
 
             # Block heavy resources — we only need the DOM text
@@ -112,12 +118,18 @@ class PlaywrightScraper(BaseScraper):
                 "**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot,css}",
                 lambda route: route.abort(),
             )
-            context.route(
-                "**/*",
-                lambda route: (
-                    route.abort() if route.request.resource_type in BLOCKED_RESOURCE_TYPES else route.continue_()
-                ),
-            )
+
+            def guard_request(route: Any) -> None:
+                request = route.request
+                safe_request, _ = validate_url_safe(request.url, require_resolution=True)
+                if not safe_request and request.is_navigation_request():
+                    blocked_navigation.append(request.url)
+                if request.resource_type in BLOCKED_RESOURCE_TYPES or not safe_request:
+                    route.abort()
+                else:
+                    route.continue_()
+
+            context.route("**/*", guard_request)
 
             page = context.new_page()
             timeout_ms = timeout_seconds * 1000
@@ -163,6 +175,8 @@ class PlaywrightScraper(BaseScraper):
             )
 
         except Exception as e:
+            if blocked_navigation:
+                raise UnsafeDestinationError("Unsafe browser navigation blocked", url=blocked_navigation[-1]) from e
             duration_ms = int((time.monotonic() - start_ms) * 1000)
             error_name = type(e).__name__
             logger.warning(

@@ -1,10 +1,14 @@
 import importlib
 
+from fastapi import FastAPI
+
 from app.config import settings
 
 
 def _route_paths(api_router) -> set[str]:
-    return {route.path for route in api_router.routes}
+    app = FastAPI()
+    app.include_router(api_router)
+    return set(app.openapi()["paths"])
 
 
 def test_router_hides_private_routes_in_public_landing_mode(monkeypatch):

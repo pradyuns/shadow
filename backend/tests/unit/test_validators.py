@@ -122,3 +122,17 @@ class TestValidateRegexPattern:
     def test_complex_but_valid_pattern(self):
         ok, err = validate_regex_pattern(r"(?:https?://)?[\w.-]+\.\w{2,}")
         assert ok is True
+
+
+def test_strict_url_validation_rejects_dns_failure(monkeypatch):
+    import socket
+
+    def fail_dns(*args, **kwargs):
+        raise socket.gaierror("unresolvable")
+
+    monkeypatch.setattr("app.utils.validators.socket.getaddrinfo", fail_dns)
+    assert validate_url_safe("https://unresolvable.example", require_resolution=True)[0] is False
+
+
+def test_shared_address_space_is_not_public():
+    assert validate_url_safe("http://100.64.0.1/")[0] is False

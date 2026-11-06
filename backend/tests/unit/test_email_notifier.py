@@ -5,12 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from workers.notifier.base import NotificationPayload, NotifierError
-from workers.notifier.email_notifier import (
-    SEVERITY_COLORS,
-    EmailNotifier,
-    _build_html_email,
-    _build_plain_text,
-)
+from workers.notifier.email_notifier import SEVERITY_COLORS, EmailNotifier, _build_html_email, _build_plain_text
 
 
 @pytest.fixture

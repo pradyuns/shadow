@@ -145,7 +145,7 @@ def scrape_single_url(self: Any, monitor_id: str, force: bool = False) -> dict[s
     from app.db.mongodb_sync import get_sync_mongo_db
     from app.db.postgres_sync import get_sync_db
     from app.models.monitor import Monitor
-    from workers.scraper.base import ScraperError
+    from workers.scraper.base import ScraperError, UnsafeDestinationError
     from workers.scraper.factory import get_firecrawl_scraper, get_scraper
     from workers.scraper.text_extractor import extract_text
 
@@ -198,7 +198,7 @@ def scrape_single_url(self: Any, monitor_id: str, force: bool = False) -> dict[s
             )
         except ScraperError as e:
             # If primary scraper failed and Firecrawl is available, try it
-            if not used_firecrawl and firecrawl_scraper:
+            if not isinstance(e, UnsafeDestinationError) and not used_firecrawl and firecrawl_scraper:
                 logger.info(
                     "scrape_primary_failed_trying_firecrawl",
                     monitor_id=monitor_id,

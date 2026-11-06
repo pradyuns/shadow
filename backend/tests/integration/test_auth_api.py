@@ -143,7 +143,7 @@ class TestLoginEndpoint:
         with (
             patch("app.api.v1.auth.authenticate_user", return_value=mock_user),
             patch(
-                "app.api.v1.auth.create_tokens",
+                "app.api.v1.auth.start_session",
                 return_value={
                     "access_token": "test-access",
                     "refresh_token": "test-refresh",
@@ -246,4 +246,28 @@ class TestRefreshEndpoint:
                 )
 
         assert response.status_code == 401
+        assert response.json() == {"detail": "Invalid or expired refresh token"}
+        cookies = response.headers.get_list("set-cookie")
+        from app.config import settings
+
+        for name in (settings.auth_access_cookie_name, settings.auth_refresh_cookie_name):
+            assert any(value.startswith(f"{name}=") and "Max-Age=0" in value for value in cookies)
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_logout_revokes_refresh_token_from_request_body(mock_db):
+    from app.db.postgres import get_db
+
+    async def override():
+        yield mock_db
+
+    app.dependency_overrides[get_db] = override
+    try:
+        with patch("app.api.v1.auth.revoke_session") as revoke:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.post("/api/v1/auth/logout", json={"refresh_token": "old-token"})
+        assert response.status_code == 204
+        revoke.assert_awaited_once_with(mock_db, "old-token")
+    finally:
         app.dependency_overrides.clear()

@@ -2,12 +2,7 @@
 
 import pytest
 
-from workers.classifier.prompts import (
-    MAX_DIFF_CHARS,
-    SYSTEM_PROMPT,
-    build_user_prompt,
-    truncate_diff,
-)
+from workers.classifier.prompts import MAX_DIFF_CHARS, SYSTEM_PROMPT, build_user_prompt, truncate_diff
 
 
 class TestBuildUserPrompt:
