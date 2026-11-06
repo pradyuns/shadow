@@ -5,12 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.auth_service import (
-    authenticate_user,
-    create_tokens,
-    refresh_tokens,
-    register_user,
-)
+from app.services.auth_service import authenticate_user, create_tokens, refresh_tokens, register_user
 
 
 class TestRegisterUser:
@@ -125,7 +120,10 @@ class TestRefreshTokens:
 
         with patch("app.services.auth_service.decode_token") as mock_decode:
             mock_decode.return_value = {
-                "sub": str(user_id), "sid": str(uuid.uuid4()), "jti": str(uuid.uuid4()), "type": "refresh"
+                "sub": str(user_id),
+                "sid": str(uuid.uuid4()),
+                "jti": str(uuid.uuid4()),
+                "type": "refresh",
             }
             tokens = await refresh_tokens(mock_db, "valid-refresh-token")
 
@@ -156,7 +154,10 @@ class TestRefreshTokens:
 
         with patch("app.services.auth_service.decode_token") as mock_decode:
             mock_decode.return_value = {
-                "sub": str(uuid.uuid4()), "sid": str(uuid.uuid4()), "jti": str(uuid.uuid4()), "type": "refresh"
+                "sub": str(uuid.uuid4()),
+                "sid": str(uuid.uuid4()),
+                "jti": str(uuid.uuid4()),
+                "type": "refresh",
             }
             tokens = await refresh_tokens(mock_db, "valid-but-user-deleted")
         assert tokens is None

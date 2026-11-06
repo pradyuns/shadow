@@ -118,6 +118,7 @@ class PlaywrightScraper(BaseScraper):
                 "**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot,css}",
                 lambda route: route.abort(),
             )
+
             def guard_request(route: Any) -> None:
                 request = route.request
                 safe_request, _ = validate_url_safe(request.url, require_resolution=True)

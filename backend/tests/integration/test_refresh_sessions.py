@@ -1,4 +1,5 @@
 """Refresh rotation and logout against a real database, not mocked queries."""
+
 import uuid
 
 import pytest

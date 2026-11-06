@@ -88,7 +88,7 @@ class Settings(BaseSettings):
         # SQLAlchemy 2.1 changed the implicit PostgreSQL driver to psycopg 3;
         # this project installs psycopg2. Preserve explicitly selected drivers.
         if value.startswith("postgresql://"):
-            return "postgresql+psycopg2://" + value[len("postgresql://"):]
+            return "postgresql+psycopg2://" + value[len("postgresql://") :]
         return value
 
     @model_validator(mode="after")

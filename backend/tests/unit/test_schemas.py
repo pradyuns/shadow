@@ -9,11 +9,7 @@ from app.schemas.alert import AlertDetail, AlertRead, Severity
 from app.schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, SessionResponse
 from app.schemas.monitor import MonitorCreate, MonitorRead, MonitorUpdate, PageType
 from app.schemas.notification import Channel, NotificationSettingRead, NotificationSettingUpdate
-from workers.classifier.schemas import (
-    ChangeCategory,
-    ClassificationResult,
-    SignificanceLevel,
-)
+from workers.classifier.schemas import ChangeCategory, ClassificationResult, SignificanceLevel
 
 
 class TestAuthSchemas:

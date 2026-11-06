@@ -249,6 +249,7 @@ class TestRefreshEndpoint:
         assert response.json() == {"detail": "Invalid or expired refresh token"}
         cookies = response.headers.get_list("set-cookie")
         from app.config import settings
+
         for name in (settings.auth_access_cookie_name, settings.auth_refresh_cookie_name):
             assert any(value.startswith(f"{name}=") and "Max-Age=0" in value for value in cookies)
         app.dependency_overrides.clear()

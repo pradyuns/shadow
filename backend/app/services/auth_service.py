@@ -8,13 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.refresh_session import RefreshSession
 from app.models.user import User
-from app.utils.security import (
-    create_access_token,
-    create_refresh_token,
-    decode_token,
-    hash_password,
-    verify_password,
-)
+from app.utils.security import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
 
 
 async def register_user(db: AsyncSession, email: str, password: str, full_name: str) -> User:
